@@ -20,21 +20,11 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
           cache: maven
 
       - name: Build (Maven)
         run: mvn -B -ntp clean verify
-
-      # Auth to Google Cloud via Workload Identity Federation (WIF)
-      # Required GitHub repo secrets:
-      # - WIF_PROVIDER: projects/.../locations/global/workloadIdentityPools/.../providers/...
-      # - GCP_SA_EMAIL: quantor-ci@<PROJECT_ID>.iam.gserviceaccount.com
-      # - GCP_PROJECT_ID
-      # - GCP_REGION (e.g. europe-west1)
-      # Optional:
-      # - AR_REPO (default: quantor)
-      # - CLOUD_RUN_SERVICE (default: quantor-api)
 
       - name: Authenticate to Google Cloud
         id: auth
@@ -50,17 +40,20 @@ jobs:
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           REGION: ${{ secrets.GCP_REGION }}
-          AR_REPO: ${{ secrets.AR_REPO || 'quantor' }}
+          AR_REPO: ${{ secrets.GCP_AR_REPO || 'quantor' }}
           SERVICE: ${{ secrets.CLOUD_RUN_SERVICE || 'quantor-api' }}
           TAG: ${{ github.sha }}
         run: |
-          gcloud builds submit --tag "$REGION-docker.pkg.dev/$PROJECT_ID/$AR_REPO/$SERVICE:$TAG" .
+          gcloud builds submit \
+            --file deploy/gcp/Dockerfile.api \
+            --tag "$REGION-docker.pkg.dev/$PROJECT_ID/$AR_REPO/$SERVICE:$TAG" \
+            .
 
       - name: Deploy to Cloud Run
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
           REGION: ${{ secrets.GCP_REGION }}
-          AR_REPO: ${{ secrets.AR_REPO || 'quantor' }}
+          AR_REPO: ${{ secrets.GCP_AR_REPO || 'quantor' }}
           SERVICE: ${{ secrets.CLOUD_RUN_SERVICE || 'quantor-api' }}
           TAG: ${{ github.sha }}
         run: |
@@ -69,5 +62,6 @@ jobs:
             --region "$REGION" \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "SPRING_PROFILES_ACTIVE=prod" \
-            --set-secrets "QUANTOR_MASTER_PASSWORD=QUANTOR_MASTER_PASSWORD:latest,QUANTOR_DB_PASSWORD=QUANTOR_DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,LEMONSQUEEZY_WEBHOOK_SECRET=LEMONSQUEEZY_WEBHOOK_SECRET:latest"
+            --set-env-vars "SPRING_PROFILES_ACTIVE=gcp"
+            # Включай обратно ТОЛЬКО после того, как эти секреты созданы в GCP Secret Manager:
+            # --set-secrets "QUANTOR_MASTER_PASSWORD=QUANTOR_MASTER_PASSWORD:latest,QUANTOR_DB_PASSWORD=QUANTOR_DB_PASSWORD:latest,JWT_SECRET=JWT_SECRET:latest,LEMONSQUEEZY_WEBHOOK_SECRET=LEMONSQUEEZY_WEBHOOK_SECRET:latest"
