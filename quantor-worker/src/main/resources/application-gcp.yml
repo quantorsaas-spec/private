@@ -1,0 +1,13 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  datasource:
+    url: ${QUANTOR_DB_URL:jdbc:postgresql://127.0.0.1:5432/quantor}
+    username: ${QUANTOR_DB_USER:quantor}
+    password: ${QUANTOR_DB_PASSWORD:quantor}
+    hikari:
+      maximum-pool-size: ${QUANTOR_DB_POOL_SIZE:5}
+  flyway:
+    enabled: true
+    baseline-on-migrate: true

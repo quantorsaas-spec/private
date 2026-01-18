@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-quantor}
+      POSTGRES_USER: ${POSTGRES_USER:-quantor}
+      # For local dev you can keep the default; for anything shared/remote override via .env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quantor}
+    ports:
+      - "5432:5432"
+    volumes:
+      - quantor_pgdata:/var/lib/postgresql/data
+
+volumes:
+  quantor_pgdata:

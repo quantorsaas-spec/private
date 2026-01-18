@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Created-By: Maven JAR Plugin 3.3.0
+Build-Jdk-Spec: 21
+Class-Path: lib/jline-reader-3.25.1.jar lib/jline-terminal-3.25.1.jar li
+ b/jline-native-3.25.1.jar lib/jline-terminal-jansi-3.25.1.jar lib/jansi
+ -2.4.1.jar lib/quantor-domain-1.0.0.jar lib/quantor-application-1.0.0.j
+ ar lib/quantor-infrastructure-1.0.0.jar lib/okhttp-4.12.0.jar lib/okio-
+ 3.6.0.jar lib/okio-jvm-3.6.0.jar lib/kotlin-stdlib-common-1.9.25.jar li
+ b/kotlin-stdlib-jdk8-1.9.25.jar lib/kotlin-stdlib-1.9.25.jar lib/annota
+ tions-13.0.jar lib/kotlin-stdlib-jdk7-1.9.25.jar lib/jackson-databind-2
+ .17.1.jar lib/jackson-annotations-2.17.2.jar lib/jackson-core-2.17.2.ja
+ r lib/sqlite-jdbc-3.45.1.0.jar lib/slf4j-simple-2.0.12.jar lib/slf4j-ap
+ i-2.0.16.jar
+Main-Class: com.quantor.cli.Main
+

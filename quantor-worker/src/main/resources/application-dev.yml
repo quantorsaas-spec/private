@@ -1,0 +1,12 @@
+# Local developer defaults (NOT for production)
+
+spring:
+  datasource:
+    # Use explicit IPv4 loopback to avoid localhost->IPv6 (::1) resolution issues in some WSL/Docker setups.
+    url: ${QUANTOR_DB_URL:jdbc:postgresql://127.0.0.1:5432/quantor}
+    username: ${QUANTOR_DB_USER:quantor}
+    password: ${QUANTOR_DB_PASSWORD:quantor}
+  jpa:
+    hibernate:
+      # Flyway is the schema source of truth. Keep startup tolerant in dev.
+      ddl-auto: none

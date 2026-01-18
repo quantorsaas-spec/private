@@ -1,0 +1,12 @@
+# Copy to gcp-env.sh and fill
+PROJECT_ID="your-gcp-project-id"
+REGION="europe-west1"
+AR_REPO="quantor"
+
+SERVICE_API="quantor-api"
+SERVICE_WORKER="quantor-worker"
+
+DB_INSTANCE="quantor-db"
+DB_NAME="quantor"
+DB_USER="quantor"
+DB_PASSWORD="CHANGE_ME"

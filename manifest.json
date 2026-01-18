@@ -1,0 +1,607 @@
+{
+  "name": "Quantor",
+  "build": "Verified-Fix13-PreflightEscRewrite",
+  "file_count": 110,
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "7565db7394837c43deb5b572e57066c10a4c073f3d57b1e3353dd61f3b663f26",
+      "bytes": 3968
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "9d2a6a9319af76fb440d2444aec53f35066943bf72ff69a8b13e62a0e7416c83",
+      "bytes": 216
+    },
+    {
+      "path": "pom.xml",
+      "sha256": "f417abc20cb59f2823a25dc131963828899f9ac7d5d558fa3fd5717a7f434b79",
+      "bytes": 1910
+    },
+    {
+      "path": "manifest.json",
+      "sha256": "ccaf2773763b9c5c6691bff54b4ce32b80a0e8143fe851b68a35fc2f2d85f9d2",
+      "bytes": 23464
+    },
+    {
+      "path": "verify.ps1",
+      "sha256": "91ee8c1eb2787c380ec2506b46406cfbb05a8260caddae1fed1f5c533490fc1d",
+      "bytes": 719
+    },
+    {
+      "path": "verify.bat",
+      "sha256": "c8d164ec2c903769922e9d09a1f9a39ddd82a8c53d2f4e83ea4f30ffaa047d9b",
+      "bytes": 458
+    },
+    {
+      "path": "verify.sh",
+      "sha256": "3da31646028c39fd23f569a26daaf839a092a769a8dba33e1bbed2c8ba9c5a2b",
+      "bytes": 694
+    },
+    {
+      "path": "quantor-domain/pom.xml",
+      "sha256": "9ed75731f37d161eca1e28036a1c218989f934cf8ab746d5dfa665ff85949c97",
+      "bytes": 439
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/market/Candle.java",
+      "sha256": "6b1ff572d7177db89f638f27b562b2b0722988bb7fffb1780c3922c8b1f1501c",
+      "bytes": 405
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/market/MarketRegime.java",
+      "sha256": "84d074e3bc81ccc56065a5ba8c0b863cbaf76e3e75f5a7ae0ca6d9e36d9abe0e",
+      "bytes": 35
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/market/MarketRegimeDetector.java",
+      "sha256": "84d074e3bc81ccc56065a5ba8c0b863cbaf76e3e75f5a7ae0ca6d9e36d9abe0e",
+      "bytes": 35
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/market/QualityGuard.java",
+      "sha256": "84d074e3bc81ccc56065a5ba8c0b863cbaf76e3e75f5a7ae0ca6d9e36d9abe0e",
+      "bytes": 35
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/Strategy.java",
+      "sha256": "053409d575255989f471b9da43b9b16833c092aa9c40b2068fecd611758a4594",
+      "bytes": 382
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/StrategyParams.java",
+      "sha256": "9a06db9167c8d169769151b74e319e86d9c9f543a261461f76f5ac8f165c099b",
+      "bytes": 2697
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/StrategyTuner.java",
+      "sha256": "40e216f4f2f7d3b70644762ce39e0f08c3593d0511f3aac3ea29712f3f188841",
+      "bytes": 5610
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/TunedParams.java",
+      "sha256": "316cfbdc9c964890975ef635d005706f898f31f3bf14b2d1783b71b5e05b043d",
+      "bytes": 270
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/AutoTuner.java",
+      "sha256": "f5a85042429f1d923a1e75966968d955c9da6c6b68ebf28bdbf71b5a121deb62",
+      "bytes": 4159
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/impl/DebugStrategy.java",
+      "sha256": "073047a88e35ff58cee9468ce9319b55570a23d4e849ec123cfcc4a13e06c281",
+      "bytes": 816
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/impl/EmaCrossStrategy.java",
+      "sha256": "d644fcaa0583f71f1155d5686d1c8d14977255250dfed4a1fd07584010de6f34",
+      "bytes": 3532
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/impl/SimpleStrategy.java",
+      "sha256": "445aa6af574b62c0d53bd5aaaa8ed655aa31bf78daebad3037fab2fc8c7382e3",
+      "bytes": 1228
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/online/OnlineLearnable.java",
+      "sha256": "4367c01404e90bcad1ca6ccb298665e9036eceabe7d8d2570f0a1148f1fd3cc3",
+      "bytes": 200
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/online/OnlineModel.java",
+      "sha256": "09fca093456cfa21a4c25cc2580b95bec0315feacf941a3e16f039cf050cb753",
+      "bytes": 6343
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/online/OnlineStrategy.java",
+      "sha256": "479ebadaace2bbcac3d19efd46d434ac48b63f43cd31285b39d0a0ef33e36409",
+      "bytes": 11201
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/strategy/online/OnlineLearningStrategy.java",
+      "sha256": "011d6b225bc99579883aac9619f3b81454cb9cb4a19d71066dd49aa708165cd1",
+      "bytes": 7870
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/risk/RiskDecision.java",
+      "sha256": "908e6861bf88947f01e76f8cef172561e5a6df68c51174cd64806400ce62df19",
+      "bytes": 434
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/risk/RiskManager.java",
+      "sha256": "6880111b02951738c72a69cc5e87b8f927009b59b3396aa8f92d7b7eb3958a40",
+      "bytes": 2819
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/trade/Signal.java",
+      "sha256": "25a71f255605ce3fa2658c2e1317305d9f9de749e3f4b52c3f6f9c6a8d801efa",
+      "bytes": 85
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/trade/TradeContext.java",
+      "sha256": "f4813081a4354e1a46e237b0d382ae0d4c516cc90682476906df2bd088908738",
+      "bytes": 1586
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/trade/Position.java",
+      "sha256": "a0b7c2b5334b9cb7b0d80e2f8f5b879dc17de63b4142b9d4da40c42e11a6469c",
+      "bytes": 1277
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/order/OrderRequest.java",
+      "sha256": "2d63f85a81af32a034aa1ba34f6b044a24471263e19aa48859e03ce295d72498",
+      "bytes": 116
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/order/OrderResult.java",
+      "sha256": "efa3b558454dd35c382a3a0b02f1b0395e2f4db6f229dbd742434703345ece66",
+      "bytes": 99
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/order/OrderSide.java",
+      "sha256": "73f0454f123bab2e79c9288b10dd5fdb2fc182599c2958b67084ded57e269090",
+      "bytes": 70
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/order/OrderType.java",
+      "sha256": "e920fecc9652b2e6b8d0109d965e3986233be23c666967c94f15eeb3e4fc7d4d",
+      "bytes": 67
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/order/TradeAction.java",
+      "sha256": "e1825cbb1413913b9e6f0bd3ac38cd5e9d8f2fca0d0322bd81fc486d9648047a",
+      "bytes": 90
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/ai/AiTradeMemory.java",
+      "sha256": "344c4567331195999faded743c6d8e5f42ecbff856823a03fa30beb61f8f0b82",
+      "bytes": 3929
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/ai/AiStatsTracker.java",
+      "sha256": "9565cb2ab3f0fe39e24fb6adfacba9b12abacc0114245bfc13f66879617224e3",
+      "bytes": 5191
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/ai/RewardShaper.java",
+      "sha256": "253f19c4eaff3f7eaba2af07a94f838b0c12e452188a9b631b2651a1e17d098b",
+      "bytes": 2813
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/ai/TrainLogger.java",
+      "sha256": "126e473e269e1c93b252a74dba3e2b70d3b88726d6293f453763900d705611e7",
+      "bytes": 2772
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/stats/TradeJournal.java",
+      "sha256": "be946eeede5ffaa2a3630e6fce53b497c9c61feb6def6e07e71cb13ba293b98b",
+      "bytes": 8110
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/util/Utils.java",
+      "sha256": "67bdf20d3705a7a1154ab12e3a296b2f48d7bab856b69d24864539e8d3262f67",
+      "bytes": 644
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/portfolio/AssetBalance.java",
+      "sha256": "75d7d66b196e96a47d30943b2c55f360378849be2212c49a07258ffbe423902e",
+      "bytes": 643
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/portfolio/PortfolioPosition.java",
+      "sha256": "622c626f11759642258130c1de37069df6ec6210784c76f129d029b168c66ca5",
+      "bytes": 1238
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/portfolio/PortfolioSnapshot.java",
+      "sha256": "0876a9118dd5092c23228e5683ed23b3f2c76576f31f1ad365ea0e1bf85c7ea3",
+      "bytes": 1276
+    },
+    {
+      "path": "quantor-domain/src/main/java/com/quantor/domain/portfolio/Fill.java",
+      "sha256": "c3018b5efddf45357a15f88b354467662a8612fc77356cba94ae73e0ea20e74d",
+      "bytes": 1015
+    },
+    {
+      "path": "quantor-application/pom.xml",
+      "sha256": "46b3acc55cce969428799aedcf608c9d850534d9dcf508be0c7b4edd0b154aed",
+      "bytes": 642
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/lifecycle/BotState.java",
+      "sha256": "021b06caaff550d32b1240548831c1a5601f9e265255bdc535c85c9112448267",
+      "bytes": 105
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/lifecycle/BotStateManager.java",
+      "sha256": "0d3b33ab2804908f8057e6938aa1892b257def7c0c8e4465693a75211bed5328",
+      "bytes": 441
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/ports/NotifierPort.java",
+      "sha256": "4a84765b03138541c9d92991bbeaaea15c2238b1678e8476c1b608b74c1c1c76",
+      "bytes": 104
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/ports/MarketDataPort.java",
+      "sha256": "14b2fa46fe230d1f6109931e26d654fd34f338e16c58d8543a921bc5308d0410",
+      "bytes": 230
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/ports/OrderExecutionPort.java",
+      "sha256": "7bc705667eb6a66fbb1220c6361447d4232b29f2ea91c22d68a4843ed17fac3f",
+      "bytes": 219
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/ports/ConfigPort.java",
+      "sha256": "f19929c3d0bd3856ed39b6568f8d02a8a9ec1ccd785525ceb2e698d13a69a007",
+      "bytes": 476
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/ports/PortfolioPort.java",
+      "sha256": "468131a9344a8df0e82ed1eb10b4525617a2c2a77478c01907473d554dc92114",
+      "bytes": 458
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/ports/SymbolMetaPort.java",
+      "sha256": "9e2bc3cf73db6befeb21b21756d7292fa2e3203a9819c6d2793f61b8bc8e4711",
+      "bytes": 272
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/engine/BacktestEngine.java",
+      "sha256": "eb39685dca43a9ccc742bb6a1d3084e10910d42d7d7614196d1c8ff6f53138d6",
+      "bytes": 9842
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/engine/LiveEngine.java",
+      "sha256": "1627f27e6d3e022b38e97df98c1dfdf390fac0afd2a008bb93ecd72c215c0d00",
+      "bytes": 23364
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/engine/PaperEngine.java",
+      "sha256": "8a2f6148b7f70cb91499af097aadb8f5dc750a9206c682021e151283d26549d8",
+      "bytes": 8837
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/engine/PaperPortfolioEngine.java",
+      "sha256": "2516a9756994809e743786a953d866234ea629abed8b7a2577b1939a16c9c0f0",
+      "bytes": 834
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/service/TradingEngineService.java",
+      "sha256": "78855bc9481f92ff9b370701474c541656317e83b8055de60a54444d0d541f23",
+      "bytes": 985
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/config/ConfigKey.java",
+      "sha256": "b9b66b4c3a4a0c0404f572344014a418268d984cd2f536922cae85075e8541b2",
+      "bytes": 1021
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/config/ConfigValidationResult.java",
+      "sha256": "57add43120c9c474f3390c2478f65d4d9223157486a24e673c655cce1381c051",
+      "bytes": 508
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/config/ConfigValidator.java",
+      "sha256": "5fc70f409f5d3aed3f0702af347c451b3c3730f670d35494fe3a4fa9488e4193",
+      "bytes": 952
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/usecase/TradingMode.java",
+      "sha256": "658032950b4ac6c4894b023ab1f4b3c69045afa4371de6962d367e204771f91c",
+      "bytes": 96
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/usecase/PipelineContext.java",
+      "sha256": "55edf89b894e823743740bcb701f0cccceab0143f82bb119d7f28f63f6fcdcec",
+      "bytes": 365
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/usecase/PipelineResult.java",
+      "sha256": "45259aef48a213b0efa8fe0326714cd17d65e23ad8bf9f6247714a9029e52a79",
+      "bytes": 223
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/application/usecase/TradingPipeline.java",
+      "sha256": "617b61626603df31a5c5ab297f17501f8722be98a3c39aba2738b04b52f9e234",
+      "bytes": 5009
+    },
+    {
+      "path": "quantor-application/src/main/java/com/quantor/db/TradeLogger.java",
+      "sha256": "056c19b0bd72baca05a9de0bbc739d47316fa0a1c21f7868093ce3941b7d518c",
+      "bytes": 1897
+    },
+    {
+      "path": "quantor-infrastructure/pom.xml",
+      "sha256": "b52d8d8a789d7f18698c017e7fb770d7260ac71606a71ba3e5788ac398b6b736",
+      "bytes": 1181
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/db/Database.java",
+      "sha256": "e4e2b40f6ab5c3b4534f8db1024c7dfd70ede2a820f6294d89e716d01ce18db1",
+      "bytes": 2161
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/db/StrategyRepository.java",
+      "sha256": "1d794018e3df2e7c562ebd76f5a033610f32e749887710f35ffd751692ee2c19",
+      "bytes": 5803
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/db/TradeLogger.java",
+      "sha256": "c270ea3186dd1a9fba083cd3169324f99c3f22b502b681033bbd775e032f13dc",
+      "bytes": 1226
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/db/TradeReport.java",
+      "sha256": "1c5bb70e3dea4b538048c14fe0c49b95c150a0396dd9c66a82b267f114f6b51b",
+      "bytes": 4992
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/db/TradeRepository.java",
+      "sha256": "931b0d1f636d0191cddcb0a3ae1f23e240d033b991368e4e00644db179167082",
+      "bytes": 5221
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/exchange/BinanceClient.java",
+      "sha256": "5f8d65db68af554a516636f82d33b79f4105f5dcfe495add4d25909aa0bb2f4d",
+      "bytes": 10976
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/exchange/ChatGptClient.java",
+      "sha256": "465f056691e3f1f9b1311cff9660d5717c9b107e68584c35fe63130b45087f74",
+      "bytes": 3085
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/exchange/HttpClient.java",
+      "sha256": "2aef948bbdcd4219da4536682c6592b988d602ae723869e9a5f60a7911255b4c",
+      "bytes": 1401
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/exchange/Signer.java",
+      "sha256": "b8c2083e67c20879806fca699d914ff544825acd947b58794729a217afe05aa5",
+      "bytes": 814
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/notification/TelegramNotifier.java",
+      "sha256": "024156c8fd96df0fac1f47c64d1747b4ee1dac77bbb4bbca74200e8a087dd4f1",
+      "bytes": 5397
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/notification/NullTelegramNotifier.java",
+      "sha256": "105ea65345fb8b90bf7524e7f36ee82f09f5736c6d8933ea41b2dd11e0c6f21a",
+      "bytes": 733
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/notification/ConsoleNotifier.java",
+      "sha256": "93b1d0594c6c9b97389d1a67230a73c102bded58e518776a1d774336bcb21fc6",
+      "bytes": 269
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/telegram/TelegramCommandBot.java",
+      "sha256": "15bdbc05f6a4cb6d7839d24c5e664d9ef784ac6950ff668eb972738b8077792e",
+      "bytes": 2191
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/ai/AiCoach.java",
+      "sha256": "1c2f183b5639d7f3af7bc9103146d427e0c93b91748f0d2cdf59c591f89c1f2f",
+      "bytes": 3048
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/ai/AiStrategy.java",
+      "sha256": "e0cd4a789f17adaf1a5308776ab2756c05ebba61b4f48823112cba802849dcb9",
+      "bytes": 2828
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/ai/HybridEmaAiFilterStrategy.java",
+      "sha256": "3e61a3976155e40caf4682a1a0431b8f0388a2621969b6fa2aa5355c2b9e2fc5",
+      "bytes": 5151
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/exchange/BinanceExchangeAdapter.java",
+      "sha256": "f5cdeed9c83cfde0593ea1a8a684dbcdcdaa8ebff92dfa384111500f1b9f5686",
+      "bytes": 1121
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/config/FileConfigService.java",
+      "sha256": "d0e7ad368776ed646dfcaf4e208f9d3d4d6f208f62004f5689cfcf413863daa3",
+      "bytes": 6600
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/config/DotEnv.java",
+      "sha256": "482fb56a0a22fa90d9e5fc8811f9cd7ca77da12e435d9ecdf123f9e4747a8580",
+      "bytes": 1194
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/security/AesGcmCrypto.java",
+      "sha256": "83c56f2119941429d5c6357a71c8344b5feefe3e41a3aa5600cd81af96410d64",
+      "bytes": 3365
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/paper/PaperBrokerState.java",
+      "sha256": "19002a1d917b0fe9de72355d1342c690f8bcafbc6d01691f49e20d9bfa7cd508",
+      "bytes": 944
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/paper/SymbolParserMetaAdapter.java",
+      "sha256": "e6b8e014c3ffbbad372f335c0382ffd5b27cfed8ddc95231902d09127b171b40",
+      "bytes": 1199
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/paper/PaperPortfolioAdapter.java",
+      "sha256": "7c5bbe4b7fb1f66c5272073f157e0fc8bc5ade2e74db980c0d62fdca3972d9f2",
+      "bytes": 2466
+    },
+    {
+      "path": "quantor-infrastructure/src/main/java/com/quantor/infrastructure/paper/PaperOrderExecutionAdapter.java",
+      "sha256": "3f0cdb2861bce9da093ae529bbb9bc1377c212b29e2e2c01599d23b10ee82190",
+      "bytes": 6015
+    },
+    {
+      "path": "quantor-cli/pom.xml",
+      "sha256": "b35acd16b67bcbfa221f48ca2ed9c57c784ee89a21f5506a4c47290b9949833c",
+      "bytes": 1528
+    },
+    {
+      "path": "quantor-cli/src/main/java/com/quantor/cli/CliApp.java",
+      "sha256": "5e15355478a6b4a41d1f19750b56d4efc6fcada2332ba220a62b7d5a3083ae0a",
+      "bytes": 8620
+    },
+    {
+      "path": "quantor-cli/src/main/java/com/quantor/cli/Main.java",
+      "sha256": "8ff64205078124eea2dbbd2f27e55849d47a04b107ddc1b3c5720b29d74b72d7",
+      "bytes": 4474
+    },
+    {
+      "path": "quantor-cli/src/main/java/com/quantor/cli/bootstrap/Bootstrap.java",
+      "sha256": "e559c81fa5aebb9a4d273db05a412bfe80cf92b1310cee24619a2f345ef0a1bc",
+      "bytes": 4270
+    },
+    {
+      "path": "quantor-cli/src/main/java/com/quantor/cli/tools/SecretsEncryptor.java",
+      "sha256": "1463d788c34ab74bbe21c94196133818612eb11566648ec69e09fee17d442652",
+      "bytes": 2635
+    },
+    {
+      "path": "quantor-cli/src/main/java/com/quantor/cli/tools/ConfigPrinter.java",
+      "sha256": "7d1317ce8bb8c1d0544ff51c807d6d3961a03f20c512b4670ded517d16eb52d7",
+      "bytes": 1123
+    },
+    {
+      "path": "quantor-cli/src/main/java/com/quantor/cli/tools/SetupWizard.java",
+      "sha256": "7210be952512ed9a6b6dc0f308276ffad2eae1ea253e98697f6ba8d37995c903",
+      "bytes": 6801
+    },
+    {
+      "path": "quantor-cli/src/main/java/com/quantor/cli/tools/ConfigDoctor.java",
+      "sha256": "c3581d1749821380b91fc880aa1e291759b630a57b51eb507662ac5384ab00c4",
+      "bytes": 9443
+    },
+    {
+      "path": "quantor-cli/src/main/java/com/quantor/cli/tools/ConfigureTool.java",
+      "sha256": "6cfaad20607a9d288a213f7caa3441bdcb2ffd21acd6509e30bf29b47fd61a59",
+      "bytes": 18008
+    },
+    {
+      "path": "quantor-cli/src/main/java/com/quantor/cli/tools/PreflightTool.java",
+      "sha256": "911692633d8665a27ca8da5308a2d3d1d63ab5ca6e9b784ec2a0fda6e8f49160",
+      "bytes": 9640
+    },
+    {
+      "path": "quantor-cli/src/main/java/com/quantor/cli/tools/AuditUtil.java",
+      "sha256": "3b68185eef455e42b3845adeeaffdbb67d07bce9a0521fda76715d13e4bd4ab2",
+      "bytes": 3240
+    },
+    {
+      "path": "quantor-cli/src/main/resources/config.properties",
+      "sha256": "2c3887295b2d901354048ed65833ef7a23647ec85de62965d24aa888556b80d6",
+      "bytes": 888
+    },
+    {
+      "path": "config/config.properties.example",
+      "sha256": "c7a6b6c21021803f1e03b2fd4b926d964f5345551e172aa1d8d036cdea4b731f",
+      "bytes": 171
+    },
+    {
+      "path": "config/secrets.properties.example",
+      "sha256": "27b078b5d054f5fb614141fc8ef2d9ec0d9d486b0206a9fd1f530814c3ab7d9d",
+      "bytes": 141
+    },
+    {
+      "path": "config/README.txt",
+      "sha256": "0ae01b757aaaf5524dc24358fee06ac6c28c00fabdd4766f240a706856c8acf4",
+      "bytes": 1414
+    },
+    {
+      "path": "config/dev/config.properties.example",
+      "sha256": "c7a6b6c21021803f1e03b2fd4b926d964f5345551e172aa1d8d036cdea4b731f",
+      "bytes": 171
+    },
+    {
+      "path": "config/dev/secrets.properties.example",
+      "sha256": "27b078b5d054f5fb614141fc8ef2d9ec0d9d486b0206a9fd1f530814c3ab7d9d",
+      "bytes": 141
+    },
+    {
+      "path": "config/prod/config.properties.example",
+      "sha256": "c7a6b6c21021803f1e03b2fd4b926d964f5345551e172aa1d8d036cdea4b731f",
+      "bytes": 171
+    },
+    {
+      "path": "config/prod/secrets.properties.example",
+      "sha256": "27b078b5d054f5fb614141fc8ef2d9ec0d9d486b0206a9fd1f530814c3ab7d9d",
+      "bytes": 141
+    }
+  ],
+  "modules": {
+    "README.md": {
+      "count": 1,
+      "sha256_xor": "7565db7394837c43"
+    },
+    ".gitignore": {
+      "count": 1,
+      "sha256_xor": "9d2a6a9319af76fb"
+    },
+    "pom.xml": {
+      "count": 1,
+      "sha256_xor": "f417abc20cb59f28"
+    },
+    "manifest.json": {
+      "count": 1,
+      "sha256_xor": "ccaf2773763b9c5c"
+    },
+    "verify.ps1": {
+      "count": 1,
+      "sha256_xor": "91ee8c1eb2787c38"
+    },
+    "verify.bat": {
+      "count": 1,
+      "sha256_xor": "c8d164ec2c903769"
+    },
+    "verify.sh": {
+      "count": 1,
+      "sha256_xor": "3da31646028c39fd"
+    },
+    "quantor-domain": {
+      "count": 37,
+      "sha256_xor": "50eaf112399eb382"
+    },
+    "quantor-application": {
+      "count": 22,
+      "sha256_xor": "cf705aa36a9dd3aa"
+    },
+    "quantor-infrastructure": {
+      "count": 25,
+      "sha256_xor": "8ec68e68b045e3a4"
+    },
+    "quantor-cli": {
+      "count": 12,
+      "sha256_xor": "b564b1a8a1045e70"
+    },
+    "config": {
+      "count": 7,
+      "sha256_xor": "eaf6d502badf8096"
+    }
+  }
+}
