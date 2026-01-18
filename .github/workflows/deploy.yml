@@ -44,9 +44,10 @@ jobs:
           SERVICE: ${{ secrets.CLOUD_RUN_SERVICE || 'quantor-api' }}
           TAG: ${{ github.sha }}
         run: |
+          IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$AR_REPO/$SERVICE:$TAG"
           gcloud builds submit \
-            --file deploy/gcp/Dockerfile.api \
-            --tag "$REGION-docker.pkg.dev/$PROJECT_ID/$AR_REPO/$SERVICE:$TAG" \
+            --config cloudbuild.yaml \
+            --substitutions=_IMAGE="$IMAGE" \
             .
 
       - name: Deploy to Cloud Run

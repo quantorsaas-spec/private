@@ -1,10 +1,17 @@
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
 COPY . .
-RUN mvn -DskipTests -q -pl quantor-worker -am clean package
+RUN mvn -B -ntp -DskipTests -pl quantor-worker -am clean package
+
+# Normalize output jar name (avoid copying "original-*.jar" if present)
+RUN set -e; \
+  ls -la /workspace/quantor-worker/target; \
+  JAR="$(ls -1 /workspace/quantor-worker/target/*.jar | grep -v 'original-' | head -n 1)"; \
+  echo "Using jar: $JAR"; \
+  cp "$JAR" /workspace/app.jar
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /workspace/quantor-worker/target/*.jar /app/app.jar
+COPY --from=build /workspace/app.jar /app/app.jar
 ENV SPRING_PROFILES_ACTIVE=gcp
 ENTRYPOINT ["java","-jar","/app/app.jar"]
