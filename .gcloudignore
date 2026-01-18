@@ -1,0 +1,6 @@
+# Используем правила .gitignore как базу
+.gitignore
+
+# Но target/ ДОЛЖЕН попасть в Cloud Build, иначе Dockerfile не найдет jar
+!**/target/**
+!**/target/*.jar
