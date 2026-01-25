@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: quantor-worker
+  datasource:
+    url: ${QUANTOR_DB_URL:jdbc:postgresql://localhost:5432/quantor}
+    username: ${QUANTOR_DB_USER:quantor}
+    password: ${QUANTOR_DB_PASSWORD:quantor}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: 8081
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  # Tracing is optional in local/dev.
+  # Default is OFF to avoid noisy connection errors when no OTLP collector is running.
+  tracing:
+    enabled: ${QUANTOR_TRACING_ENABLED:false}
+    sampling:
+      probability: ${QUANTOR_TRACING_SAMPLE_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      endpoint: ${QUANTOR_OTLP_ENDPOINT:}
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+quantor:
+  worker:
+    pollMs: 1000
+    heartbeatMs: 5000
+    batchSize: 50
+    processingTimeoutSeconds: 120
+    maxAttempts: 10
+    retryBaseSeconds: 2
+    # Lease ensures that each RUNNING/PAUSED bot instance is executed by exactly one worker.
+    leaseTtlSeconds: 30
+    leasePollMs: 1000
+    leaseBatchSize: 50

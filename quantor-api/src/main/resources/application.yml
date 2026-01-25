@@ -1,0 +1,57 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: quantor-api
+  datasource:
+    url: ${QUANTOR_DB_URL:jdbc:postgresql://localhost:5432/quantor}
+    username: ${QUANTOR_DB_USER:quantor}
+    password: ${QUANTOR_DB_PASSWORD:quantor}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  tracing:
+    # Cloud Run doesn't have an OTLP collector by default.
+    # Keep tracing OFF unless explicitly enabled.
+    enabled: ${QUANTOR_TRACING_ENABLED:false}
+    sampling:
+      probability: ${QUANTOR_TRACING_SAMPLE_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      # Set QUANTOR_OTLP_ENDPOINT only when QUANTOR_TRACING_ENABLED=true
+      endpoint: ${QUANTOR_OTLP_ENDPOINT:}
+
+quantor:
+  telegram:
+    enabled: false
+    # Telegram Bot API token (recommended via env var)
+    botToken: ${QUANTOR_TELEGRAM_BOT_TOKEN:}
+    # Comma-separated list of Telegram numeric user IDs allowed to use this bot (empty = deny all)
+    allowedUserIds: ${QUANTOR_TELEGRAM_ALLOWED_USER_IDS:}
+    # Optional: send important alerts to this chat ID (e.g. group) when needed
+    adminChatId: ${QUANTOR_TELEGRAM_ADMIN_CHAT_ID:}
+  lemonsqueezy:
+    # IMPORTANT:
+    # - In prod you MUST set QUANTOR_LEMONSQUEEZY_WEBHOOK_SECRET
+    # - In dev profile (application-dev.yml) empty secret will be allowed for local testing
+    webhookSecret: ${QUANTOR_LEMONSQUEEZY_WEBHOOK_SECRET:}
+    variantId:
+      pro: ""
+      proPlus: ""
+  auth:
+    issuer: "quantor"
+    accessTokenMinutes: 30
+    supportTokenMinutes: 10
+    refreshTokenDays: 30
+    # IMPORTANT: set QUANTOR_JWT_SECRET in every non-dev environment.
+    jwtSecret: ${QUANTOR_JWT_SECRET}

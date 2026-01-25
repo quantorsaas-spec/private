@@ -1,0 +1,12 @@
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+WORKDIR /workspace
+COPY . .
+RUN mvn -B -ntp -DskipTests -pl quantor-worker -am clean package
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+# Pick the Spring Boot repackaged jar (exclude original-*)
+COPY --from=build /workspace/quantor-worker/target/*.jar /tmp/
+RUN set -e; JAR="$(ls -1 /tmp/*.jar | grep -v 'original-' | head -n 1)"; echo "Using jar: $JAR"; cp "$JAR" /app/app.jar; rm -rf /tmp/*.jar
+ENV SPRING_PROFILES_ACTIVE=gcp
+ENTRYPOINT ["java","-jar","/app/app.jar"]

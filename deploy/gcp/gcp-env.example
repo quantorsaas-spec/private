@@ -1,0 +1,27 @@
+# Copy this file to: deploy/gcp/gcp-env.sh
+# and fill values for your GCP project.
+
+# GCP
+PROJECT_ID="your-gcp-project-id"
+REGION="europe-west4"
+AR_REPO="quantor"
+
+# Cloud Run services
+SERVICE_API="quantor-api"
+SERVICE_WORKER="quantor-worker"
+
+# Optional. If unset, deploy script will use quantor-run@${PROJECT_ID}.iam.gserviceaccount.com
+RUN_SA=""
+
+# Cloud SQL (Postgres)
+# Example: quantor-prod:europe-west4:quantor-pg
+DB_INSTANCE="your-project-id:europe-west4:your-sql-instance"
+DB_NAME="quantor"
+DB_USER="quantor"
+
+# Secret Manager (must exist in the project)
+# These names are intentionally 1:1 with env vars to avoid mapping mistakes.
+# QUANTOR_MASTER_PASSWORD
+# QUANTOR_DB_PASSWORD
+# QUANTOR_JWT_SECRET
+# QUANTOR_LEMONSQUEEZY_WEBHOOK_SECRET

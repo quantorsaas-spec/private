@@ -1,0 +1,7 @@
+.git
+.idea
+**/target
+**/*.log
+deploy
+docs
+quantor-*/data

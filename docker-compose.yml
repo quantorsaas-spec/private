@@ -1,0 +1,87 @@
+
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: quantor-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-quantor}
+      POSTGRES_USER: ${POSTGRES_USER:-quantor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quantor}
+    ports:
+      - "5432:5432"
+    volumes:
+      - quantor_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-quantor} -d ${POSTGRES_DB:-quantor}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: quantor-api/Dockerfile.dev
+    container_name: quantor-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+
+      QUANTOR_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-quantor}
+      QUANTOR_DB_USER: ${POSTGRES_USER:-quantor}
+      QUANTOR_DB_PASSWORD: ${POSTGRES_PASSWORD:-quantor}
+
+      # Local/dev defaults: don't attempt to export traces unless explicitly enabled.
+      QUANTOR_TRACING_ENABLED: ${QUANTOR_TRACING_ENABLED:-false}
+      QUANTOR_OTLP_ENDPOINT: ${QUANTOR_OTLP_ENDPOINT:-}
+
+      JAVA_TOOL_OPTIONS: >
+        -XX:MaxRAMPercentage=60
+        -XX:InitialRAMPercentage=20
+
+      OTEL_SDK_DISABLED: "true"
+    ports:
+      - "8080:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  worker:
+    build:
+      context: .
+      dockerfile: quantor-worker/Dockerfile.dev
+    container_name: quantor-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+
+      QUANTOR_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-quantor}
+      QUANTOR_DB_USER: ${POSTGRES_USER:-quantor}
+      QUANTOR_DB_PASSWORD: ${POSTGRES_PASSWORD:-quantor}
+
+      # Local/dev defaults: don't attempt to export traces unless explicitly enabled.
+      QUANTOR_TRACING_ENABLED: ${QUANTOR_TRACING_ENABLED:-false}
+      QUANTOR_OTLP_ENDPOINT: ${QUANTOR_OTLP_ENDPOINT:-}
+
+      JAVA_TOOL_OPTIONS: >
+        -XX:MaxRAMPercentage=60
+        -XX:InitialRAMPercentage=20
+
+      OTEL_SDK_DISABLED: "true"
+    ports:
+      - "8081:8081"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+volumes:
+  quantor_pg:

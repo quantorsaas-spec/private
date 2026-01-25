@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Dev launcher (local):
+# - Starts Postgres via docker compose
+# - Optionally resets DB volume (QUANTOR_DB_RESET=1)
+# - Starts API unless QUANTOR_SKIP_API=1
+# - Starts Worker unless QUANTOR_SKIP_WORKER=1
+#
+# Requirements:
+# - docker + docker compose
+# - Java 21 + Maven
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT_DIR"
+
+PIDS_DIR="$ROOT_DIR/.dev/pids"
+LOGS_DIR="$ROOT_DIR/.dev/logs"
+mkdir -p "$PIDS_DIR" "$LOGS_DIR"
+
+compose() {
+  # allow both "docker compose" and "docker-compose"
+  if docker compose version >/dev/null 2>&1; then
+    docker compose "$@"
+  else
+    docker-compose "$@"
+  fi
+}
+
+is_true() {
+  case "${1:-}" in
+    1|true|TRUE|yes|YES|on|ON) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+wait_for_postgres() {
+  local host="127.0.0.1"
+  local port="5432"
+
+  echo "Postgres is listening on ${host}:${port}"
+
+  # Wait up to ~30s.
+  for _ in {1..30}; do
+    if command -v pg_isready >/dev/null 2>&1; then
+      if pg_isready -h "$host" -p "$port" >/dev/null 2>&1; then
+        echo "Postgres OK (${port})"
+        return 0
+      fi
+    else
+      # fallback: TCP connect check
+      if (echo >/dev/tcp/${host}/${port}) >/dev/null 2>&1; then
+        echo "Postgres OK (${port})"
+        return 0
+      fi
+    fi
+    sleep 1
+  done
+
+  echo "ERROR: Postgres did not become ready on ${host}:${port}" >&2
+  return 1
+}
+
+start_maven_service_bg() {
+  local name="$1"; shift
+  local pid_file="$PIDS_DIR/${name}.pid"
+  local log_file="$LOGS_DIR/${name}.log"
+
+  # Stop previous instance if still running.
+  if [[ -f "$pid_file" ]]; then
+    local old_pid
+    old_pid="$(cat "$pid_file" || true)"
+    if [[ -n "$old_pid" ]] && kill -0 "$old_pid" >/dev/null 2>&1; then
+      echo "==> Stopping previous ${name} (pid=${old_pid})"
+      kill "$old_pid" >/dev/null 2>&1 || true
+      sleep 1
+    fi
+    rm -f "$pid_file"
+  fi
+
+  echo "==> Starting ${name}"
+  echo "    log: $log_file"
+
+  # shellcheck disable=SC2091
+  ( 
+    cd "$ROOT_DIR" 
+    exec mvn -DskipTests "$@" 
+  ) >"$log_file" 2>&1 &
+
+  echo $! >"$pid_file"
+}
+
+echo "==> Starting Postgres"
+
+if is_true "${QUANTOR_DB_RESET:-}"; then
+  echo "--> QUANTOR_DB_RESET=1: dropping compose volumes (docker compose down -v)"
+  compose down -v
+fi
+
+compose up -d postgres
+wait_for_postgres
+
+if is_true "${QUANTOR_SKIP_API:-}"; then
+  echo "==> Skipping API (QUANTOR_SKIP_API=1)"
+else
+  # Runs on default port from application.yml (typically 8080)
+  start_maven_service_bg "api" -pl quantor-api -am spring-boot:run
+fi
+
+if is_true "${QUANTOR_SKIP_WORKER:-}"; then
+  echo "==> Skipping Worker (QUANTOR_SKIP_WORKER=1)"
+else
+  start_maven_service_bg "worker" -pl quantor-worker -am spring-boot:run
+fi
+
+echo "==> Done"
+echo "- logs:   $LOGS_DIR"
+echo "- pids:   $PIDS_DIR"

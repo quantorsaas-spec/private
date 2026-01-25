@@ -1,0 +1,12 @@
+# Quantor main config
+mode=TEST
+baseUrlTest=https://testnet.binance.vision
+baseUrlLive=https://api.binance.com
+
+# trading defaults
+symbol=BTCUSDT
+interval=1m
+lookback=200
+
+# PAPER market data source
+paper.marketDataExchange=BINANCE  # BINANCE|BYBIT|OKX

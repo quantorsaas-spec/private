@@ -1,0 +1,18 @@
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+WORKDIR /workspace
+COPY . .
+RUN mvn -B -ntp -DskipTests -pl quantor-api -am clean package
+
+# выберем один jar (исключаем original-*)
+RUN set -e; \
+  ls -la /workspace/quantor-api/target; \
+  JAR="$(ls -1 /workspace/quantor-api/target/*.jar | grep -v 'original-' | head -n 1)"; \
+  echo "Using jar: $JAR"; \
+  cp "$JAR" /workspace/app.jar
+
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /workspace/app.jar /app/app.jar
+EXPOSE 8080
+ENV SPRING_PROFILES_ACTIVE=gcp
+ENTRYPOINT ["java","-jar","/app/app.jar"]

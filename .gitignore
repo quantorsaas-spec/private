@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+Thumbs.db
+*:Zone.Identifier*
+
+# IDE
+.idea/
+.vscode/
+
+# Java / Maven
+target/
+*.log
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Docker
+docker-compose.override.yml
+
+# Runtime data
+data/
+tmp/
