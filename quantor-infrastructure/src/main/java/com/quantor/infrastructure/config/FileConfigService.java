@@ -132,8 +132,22 @@ public final class FileConfigService implements ConfigPort {
         return map;
     }
 
+    /**
+     * Maps a Java-properties key into an env-var key.
+     *
+     * We support camelCase (botToken/chatId/apiKey/chatGptApiUrl, ...).
+     * Examples:
+     * - telegram.botToken  -> QUANTOR_TELEGRAM_BOT_TOKEN
+     * - telegram.chatId    -> QUANTOR_TELEGRAM_CHAT_ID
+     * - apiKey             -> QUANTOR_API_KEY
+     */
     private static String toEnvKey(String key) {
-        String normalized = key.replace('.', '_').toUpperCase();
+        // 1) dots -> underscores
+        String s = key.replace('.', '_');
+        // 2) camelCase -> snake_case (keep existing underscores)
+        s = s.replaceAll("([a-z0-9])([A-Z])", "$1_$2");
+        // 3) upper-case
+        String normalized = s.toUpperCase();
         return "QUANTOR_" + normalized;
     }
 

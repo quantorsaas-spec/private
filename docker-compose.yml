@@ -1,5 +1,3 @@
-
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -20,6 +18,8 @@ services:
       retries: 20
 
   api:
+    env_file:
+      - /home/quantor/.quantor.env
     build:
       context: .
       dockerfile: quantor-api/Dockerfile.dev
@@ -35,11 +35,10 @@ services:
       QUANTOR_DB_USER: ${POSTGRES_USER:-quantor}
       QUANTOR_DB_PASSWORD: ${POSTGRES_PASSWORD:-quantor}
 
-      # Local/dev defaults: don't attempt to export traces unless explicitly enabled.
       QUANTOR_TRACING_ENABLED: ${QUANTOR_TRACING_ENABLED:-false}
-      QUANTOR_OTLP_ENDPOINT: ${QUANTOR_OTLP_ENDPOINT:-}
+      QUANTOR_OTLP_ENDPOINT: ${QUANTOR_OTLP_ENDPOINT:-""}
 
-      JAVA_TOOL_OPTIONS: >
+      JAVA_TOOL_OPTIONS: >-
         -XX:MaxRAMPercentage=60
         -XX:InitialRAMPercentage=20
 
@@ -52,6 +51,8 @@ services:
           memory: 512m
 
   worker:
+    env_file:
+      - /home/quantor/.quantor.env
     build:
       context: .
       dockerfile: quantor-worker/Dockerfile.dev
@@ -67,11 +68,10 @@ services:
       QUANTOR_DB_USER: ${POSTGRES_USER:-quantor}
       QUANTOR_DB_PASSWORD: ${POSTGRES_PASSWORD:-quantor}
 
-      # Local/dev defaults: don't attempt to export traces unless explicitly enabled.
       QUANTOR_TRACING_ENABLED: ${QUANTOR_TRACING_ENABLED:-false}
-      QUANTOR_OTLP_ENDPOINT: ${QUANTOR_OTLP_ENDPOINT:-}
+      QUANTOR_OTLP_ENDPOINT: ${QUANTOR_OTLP_ENDPOINT:-""}
 
-      JAVA_TOOL_OPTIONS: >
+      JAVA_TOOL_OPTIONS: >-
         -XX:MaxRAMPercentage=60
         -XX:InitialRAMPercentage=20
 

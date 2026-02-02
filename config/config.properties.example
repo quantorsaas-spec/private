@@ -1,6 +1,6 @@
 
 # --- BASIC ---
-symbol=BTCUSDT
+symbol=BTC/USDT
 interval=1m
 mode=TEST
 

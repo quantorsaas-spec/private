@@ -1,14 +1,28 @@
+# GCP profile (Cloud Run)
 server:
   port: ${PORT:8080}
 
 spring:
   datasource:
-    # Override via env for Cloud SQL / private IP.
-    url: ${QUANTOR_DB_URL:jdbc:postgresql://127.0.0.1:5432/quantor}
-    username: ${QUANTOR_DB_USER:quantor}
-    password: ${QUANTOR_DB_PASSWORD:quantor}
+    url: ${QUANTOR_DB_URL}
+    username: ${QUANTOR_DB_USER}
+    password: ${QUANTOR_DB_PASS}
+    driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: ${QUANTOR_DB_POOL_SIZE:10}
+
+  jpa:
+    open-in-view: false
+
   flyway:
     enabled: true
     baseline-on-migrate: true
+
+quantor:
+  telegram:
+    # Never poll Telegram from Cloud Run
+    enabled: false
+
+logging:
+  level:
+    root: INFO

@@ -6,15 +6,15 @@ spring:
     url: ${QUANTOR_DB_URL:jdbc:postgresql://127.0.0.1:5432/quantor}
 
 quantor:
+  telegram:
+    enabled: false
   auth:
     # Dev-only default to allow local startup without exporting secrets into env.
     # In every non-dev environment you MUST set QUANTOR_JWT_SECRET.
     jwtSecret: ${QUANTOR_JWT_SECRET:dev_jwt_secret_change_me}
 
   telegram:
-    # Dev default: enabled, but it will still NOT run unless:
-    # - QUANTOR_TELEGRAM_BOT_TOKEN is set
-    # - your user id is in QUANTOR_TELEGRAM_ALLOWED_USER_IDS
+    # Ops bot (TelegramOpsBot) uses these properties.
     enabled: ${QUANTOR_TELEGRAM_ENABLED:true}
     botToken: ${QUANTOR_TELEGRAM_BOT_TOKEN:}
     allowedUserIds: ${QUANTOR_TELEGRAM_ALLOWED_USER_IDS:}

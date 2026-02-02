@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:quantor_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driverClassName: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      # H2 (and many SQL dialects) treat INTERVAL as a reserved keyword.
+      # The project currently has a column named "interval" (see bot_instances),
+      # so we force Hibernate to quote identifiers in tests to catch schema issues
+      # without renaming production columns yet.
+      hibernate:
+        globally_quoted_identifiers: true
+        auto_quote_keyword: true
+  flyway:
+    enabled: false
+
+quantor:
+  # Tests don't validate secrets; keep them explicit to avoid accidental prod assumptions.
+  auth:
+    jwtSecret: test_jwt_secret
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

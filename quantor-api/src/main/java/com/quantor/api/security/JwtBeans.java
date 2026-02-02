@@ -12,6 +12,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.JWSAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -35,6 +36,7 @@ public class JwtBeans {
   }
 
   @Bean
+  @ConditionalOnMissingBean(name = "jwtEncoder")
   public JwtEncoder jwtEncoder(@Value("${quantor.auth.jwtSecret:}") String secret) {
     byte[] keyBytes = normalizeSecret(secret);
     var jwk = new OctetSequenceKey.Builder(keyBytes)
@@ -47,6 +49,7 @@ public class JwtBeans {
   }
 
   @Bean
+  @ConditionalOnMissingBean(name = "jwtDecoder")
   public JwtDecoder jwtDecoder(@Value("${quantor.auth.jwtSecret:}") String secret) {
     var key = new SecretKeySpec(normalizeSecret(secret), "HmacSHA256");
     return NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
