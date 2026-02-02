@@ -66,6 +66,28 @@
   <build>
     <pluginManagement>
       <plugins>
+        <!-- Ensure modern Surefire for JUnit 5 and Java 21 across all modules.
+             Also prevent multi-module runs with -Dtest=... from failing in modules that have no tests. -->
+        <plugin>
+  <groupId>org.apache.maven.plugins</groupId>
+  <artifactId>maven-surefire-plugin</artifactId>
+  <version>3.2.5</version>
+  <configuration>
+    <failIfNoTests>false</failIfNoTests>
+    <failIfNoSpecifiedTests>false</failIfNoSpecifiedTests>
+  </configuration>
+</plugin>
+
+
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <version>3.2.5</version>
+          <configuration>
+            <failIfNoTests>false</failIfNoTests>
+            <useModulePath>false</useModulePath>
+          </configuration>
+        </plugin>
         <!-- Pin Spring Boot plugin version when not using spring-boot-starter-parent as the parent. -->
         <plugin>
           <groupId>org.springframework.boot</groupId>
@@ -80,9 +102,8 @@
           <configuration>
             <release>${maven.compiler.release}</release>
             <encoding>${project.build.sourceEncoding}</encoding>
-          
-                    <parameters>true</parameters>
-</configuration>
+            <parameters>true</parameters>
+          </configuration>
         </plugin>
       </plugins>
     </pluginManagement>
