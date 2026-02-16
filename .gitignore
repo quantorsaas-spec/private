@@ -65,3 +65,6 @@ docker-compose.override.yml
 .dev/
 *.bak.*
 *.pid
+
+# local helper scripts/state
+tools/
