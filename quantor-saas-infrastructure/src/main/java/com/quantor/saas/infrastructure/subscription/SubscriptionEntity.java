@@ -1,3 +1,4 @@
+// File: quantor-saas-infrastructure/src/main/java/com/quantor/saas/infrastructure/subscription/SubscriptionEntity.java
 package com.quantor.saas.infrastructure.subscription;
 
 import jakarta.persistence.Column;
@@ -33,7 +34,6 @@ public class SubscriptionEntity {
 
   @Column(name = "status", nullable = false, length = 30)
   private String status;
-
 
   @Column(name = "frozen", nullable = false)
   private boolean frozen;
@@ -72,57 +72,20 @@ public class SubscriptionEntity {
     this.updatedAt = updatedAt;
   }
 
-  public UUID getId() {
-    return id;
-  }
+  public UUID getId() { return id; }
+  public UUID getUserId() { return userId; }
+  public String getPlan() { return plan; }
+  public String getStatus() { return status; }
+  public boolean isFrozen() { return frozen; }
+  public Instant getFrozenAt() { return frozenAt; }
+  public Instant getCurrentPeriodEndsAt() { return currentPeriodEndsAt; }
+  public String getExternalSubscriptionId() { return externalSubscriptionId; }
+  public Instant getUpdatedAt() { return updatedAt; }
 
-  public UUID getUserId() {
-    return userId;
-  }
-
-  public String getPlan() {
-    return plan;
-  }
-
-  public String getStatus() {
-    return status;
-  }
-
-  public boolean isFrozen() {
-    return frozen;
-  }
-
-  public Instant getFrozenAt() {
-    return frozenAt;
-  }
-
-  public Instant getCurrentPeriodEndsAt() {
-    return currentPeriodEndsAt;
-  }
-
-  public String getExternalSubscriptionId() {
-    return externalSubscriptionId;
-  }
-
-  public Instant getUpdatedAt() {
-    return updatedAt;
-  }
-
-  public void setPlan(String plan) {
-    this.plan = plan;
-  }
-
-  public void setStatus(String status) {
-    this.status = status;
-  }
-
-  public void setCurrentPeriodEndsAt(Instant currentPeriodEndsAt) {
-    this.currentPeriodEndsAt = currentPeriodEndsAt;
-  }
-
-  public void setUpdatedAt(Instant updatedAt) {
-    this.updatedAt = updatedAt;
-  }
+  public void setPlan(String plan) { this.plan = plan; }
+  public void setStatus(String status) { this.status = status; }
+  public void setCurrentPeriodEndsAt(Instant currentPeriodEndsAt) { this.currentPeriodEndsAt = currentPeriodEndsAt; }
+  public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
 
   public void freeze(Instant at) {
     this.frozen = true;

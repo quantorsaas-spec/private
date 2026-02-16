@@ -1,9 +1,9 @@
 package com.quantor.saas.infrastructure.engine;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,7 +39,13 @@ public interface BotCommandRepository extends JpaRepository<BotCommandEntity, UU
   /**
    * Atomically claims up to :limit PENDING commands using Postgres row-level locking.
    * Safe for running multiple worker instances in parallel.
+   *
+   * NOTE:
+   * This is an UPDATE ... RETURNING query. It MUST be executed as a modifying query
+   * (otherwise Spring Data may treat it as a select and/or no-tx update, leading to
+   * TransactionRequiredException in scheduled tasks).
    */
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Transactional
   @Query(
       value = """
@@ -64,7 +70,8 @@ public interface BotCommandRepository extends JpaRepository<BotCommandEntity, UU
   List<BotCommandEntity> claimBatch(@Param("workerId") String workerId, @Param("limit") int limit);
 
   /** Re-queues stuck PROCESSING commands (e.g., worker crashed) back to PENDING. */
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Transactional
   @Query(
       value = """
           UPDATE bot_commands
@@ -78,7 +85,8 @@ public interface BotCommandRepository extends JpaRepository<BotCommandEntity, UU
       nativeQuery = true)
   int requeueStuck(@Param("deadline") Instant deadline);
 
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Transactional
   @Query(
       value = """
           UPDATE bot_commands
@@ -93,7 +101,8 @@ public interface BotCommandRepository extends JpaRepository<BotCommandEntity, UU
   /**
    * Marks command FAILED (final) and stores error.
    */
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Transactional
   @Query(
       value = """
           UPDATE bot_commands
@@ -108,7 +117,8 @@ public interface BotCommandRepository extends JpaRepository<BotCommandEntity, UU
   /**
    * Schedules a retry: increments attempts, sets next_run_at, and moves back to PENDING.
    */
-  @Modifying
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Transactional
   @Query(
       value = """
           UPDATE bot_commands

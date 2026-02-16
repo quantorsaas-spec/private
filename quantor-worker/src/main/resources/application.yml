@@ -1,4 +1,8 @@
+# File: quantor-worker/src/main/resources/application.yml
+
 spring:
+  main:
+    allow-bean-definition-overriding: true
   application:
     name: quantor-worker
   datasource:
@@ -25,8 +29,6 @@ management:
     web:
       exposure:
         include: health,info,metrics,prometheus
-  # Tracing is optional in local/dev.
-  # Default is OFF to avoid noisy connection errors when no OTLP collector is running.
   tracing:
     enabled: ${QUANTOR_TRACING_ENABLED:false}
     sampling:
@@ -40,6 +42,11 @@ management:
         enabled: true
 
 quantor:
+  runtime:
+    # Hard ON for now. If you want env-driven later:
+    # debugStopTrace: ${QUANTOR_RUNTIME_DEBUG_STOP_TRACE:false}
+    debugStopTrace: true
+
   worker:
     pollMs: 1000
     heartbeatMs: 5000
@@ -47,7 +54,6 @@ quantor:
     processingTimeoutSeconds: 120
     maxAttempts: 10
     retryBaseSeconds: 2
-    # Lease ensures that each RUNNING/PAUSED bot instance is executed by exactly one worker.
     leaseTtlSeconds: 30
     leasePollMs: 1000
     leaseBatchSize: 50

@@ -12,15 +12,13 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * Starts the Telegram command bot (long-polling) when enabled via config.
+ * Starts TelegramCommandBot (long-polling) ONLY when explicitly enabled.
  *
- * application.yml:
- *   quantor:
- *     telegram:
- *       enabled: true
+ * This must NOT share the same enable-flag with TelegramOpsBot,
+ * otherwise you'll get Telegram 409 (two getUpdates consumers).
  */
 @Component
-@ConditionalOnProperty(prefix = "quantor.telegram", name = "enabled", havingValue = "true")
+@ConditionalOnProperty(prefix = "quantor.telegram.command", name = "enabled", havingValue = "true")
 public class TelegramBotStartup implements ApplicationRunner {
 
     private final ConfigPort config;
@@ -35,12 +33,16 @@ public class TelegramBotStartup implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        String token = config.getSecret("telegram.botToken");
-        String chatId = config.getSecret("telegram.chatId");
+        // 1) Prefer env vars (docker/.env)
+        String token = getenv("QUANTOR_TELEGRAM_BOT_TOKEN");
+        String chatId = getenv("QUANTOR_TELEGRAM_CHAT_ID"); // IMPORTANT: chat id (not admin chat id)
 
-        if (token == null || token.isBlank() || chatId == null || chatId.isBlank()) {
-            System.err.println("quantor.telegram.enabled=true but Telegram secrets are missing. " +
-                    "Set telegram.botToken and telegram.chatId in secrets storage.");
+        // 2) Fallback to config secrets
+        if (isBlank(token)) token = safeGetSecret("telegram.botToken");
+        if (isBlank(chatId)) chatId = safeGetSecret("telegram.chatId");
+
+        if (isBlank(token) || isBlank(chatId)) {
+            System.err.println("TelegramCommandBot enabled, but token/chatId missing. Set env: QUANTOR_TELEGRAM_BOT_TOKEN and QUANTOR_TELEGRAM_CHAT_ID");
             return;
         }
 
@@ -48,6 +50,7 @@ public class TelegramBotStartup implements ApplicationRunner {
 
         String master = System.getenv("QUANTOR_MASTER_PASSWORD");
         char[] masterPassword = (master == null) ? new char[0] : master.toCharArray();
+
         String userId = config.get("userId", "local");
 
         TelegramCommandBot bot = new TelegramCommandBot(
@@ -61,6 +64,29 @@ public class TelegramBotStartup implements ApplicationRunner {
                 userId
         );
 
-        bot.start();
+        // Do NOT block Spring startup
+        Thread t = new Thread(bot::start, "quantor-telegram-command-bot");
+        t.setDaemon(true);
+        t.start();
+
+        System.out.println("TelegramCommandBot started (long-polling).");
+    }
+
+    private static String getenv(String k) {
+        String v = System.getenv(k);
+        return v == null ? "" : v.trim();
+    }
+
+    private String safeGetSecret(String key) {
+        try {
+            String v = config.getSecret(key);
+            return v == null ? "" : v.trim();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
     }
 }

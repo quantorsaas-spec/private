@@ -17,4 +17,12 @@ public final class SubscriptionRequiredException extends DomainException {
     public StopReason stopReason() {
         return stopReason;
     }
+
+    /**
+     * Used by API layer to render stable error reason.
+     */
+    public String reason() {
+        String m = getMessage();
+        return (m == null || m.isBlank()) ? "subscription_required" : m;
+    }
 }

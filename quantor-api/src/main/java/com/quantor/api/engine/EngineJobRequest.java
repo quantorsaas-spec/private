@@ -17,14 +17,16 @@ public record EngineJobRequest(
         String interval,
         Integer lookback
 ) {
+
     public ExecutionJob toJob(String userIdFromJwt) {
         String uid = (userIdFromJwt != null && !userIdFromJwt.isBlank())
-            ? userIdFromJwt.trim()
-            : required(userId, "userId");
-        // Backwards-compatible defaults: if the request doesn't specify exchanges, assume BINANCE.
+                ? userIdFromJwt.trim()
+                : required(userId, "userId");
+
         ExchangeId ex = ExchangeId.BINANCE;
         ExchangeId md = ExchangeId.BINANCE;
-        MarketSymbol ms = parseSymbol(required(symbol, "symbol"));
+
+        MarketSymbol ms = MarketSymbol.parse(required(symbol, "symbol"));
         Timeframe tf = parseTimeframe(required(interval, "interval"));
 
         return new ExecutionJob(
@@ -36,26 +38,6 @@ public record EngineJobRequest(
                 tf,
                 lookback == null ? 200 : Math.max(1, lookback)
         );
-    }
-
-    private static MarketSymbol parseSymbol(String raw) {
-        String s = raw.trim().toUpperCase(Locale.ROOT);
-        // Accept common formats: BTC/USDT, BTC-USDT, BTCUSDT
-        if (s.contains("/")) {
-            String[] p = s.split("/", 2);
-            return new MarketSymbol(p[0], p[1]);
-        }
-        if (s.contains("-")) {
-            String[] p = s.split("-", 2);
-            return new MarketSymbol(p[0], p[1]);
-        }
-        // Heuristic for concatenated symbols (Binance style). Extend when needed.
-        for (String quote : new String[]{"USDT", "USDC", "USD", "BTC", "ETH"}) {
-            if (s.endsWith(quote) && s.length() > quote.length()) {
-                return new MarketSymbol(s.substring(0, s.length() - quote.length()), quote);
-            }
-        }
-        throw new IllegalArgumentException("Unsupported symbol format: " + raw);
     }
 
     private static Timeframe parseTimeframe(String raw) {
@@ -73,7 +55,8 @@ public record EngineJobRequest(
     }
 
     private static String required(String v, String name) {
-        if (v == null || v.isBlank()) throw new IllegalArgumentException("Missing field: " + name);
+        if (v == null || v.isBlank())
+            throw new IllegalArgumentException("Missing field: " + name);
         return v.trim();
     }
 }

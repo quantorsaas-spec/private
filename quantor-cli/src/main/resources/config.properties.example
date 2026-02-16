@@ -1,0 +1,12 @@
+# Quantor CLI config example (NO SECRETS)
+# Copy to: quantor-cli/src/main/resources/config.properties (local only)
+
+userId=00000000-0000-0000-0000-000000000000
+
+# trading defaults
+symbol=BTC/USDT
+interval=1m
+mode=TEST
+
+# billing
+billing.checkoutUrl=https://your-store.lemonsqueezy.com/checkout/buy/XXXXX

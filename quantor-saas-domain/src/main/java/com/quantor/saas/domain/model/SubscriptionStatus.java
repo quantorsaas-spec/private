@@ -1,9 +1,10 @@
 package com.quantor.saas.domain.model;
 
 public enum SubscriptionStatus {
-    TRIAL,
-    ACTIVE,
-    PAUSED,
-    CANCELED,
-    EXPIRED
+  ACTIVE,
+  TRIAL,
+  PAST_DUE,
+  PAUSED,
+  CANCELED,
+  EXPIRED
 }

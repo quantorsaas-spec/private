@@ -73,7 +73,7 @@ public final class Bootstrap {
         ExchangePort exchange = new UnifiedBinanceExchangeAdapter(legacy);
 
         // Core settings (support both old + new keys)
-        String rawSymbol = first(config, "trade.symbol", "symbol", "BTCUSDT");
+        String rawSymbol = first(config, "trade.symbol", "symbol", "BTC/USDT");
         String rawInterval = first(config, "trade.interval", "interval", "1m");
         boolean realTradingEnabled = Boolean.parseBoolean(first(config, "liveRealTradingEnabled", "binance.testMode", "false"));
 
@@ -201,11 +201,35 @@ public final class Bootstrap {
                 strategy = new EmaCrossStrategy(emaFast, emaSlow);
             }
 
-            TradingMode mode = realTradingEnabled ? TradingMode.LIVE : TradingMode.PAPER;
-            return new TradingPipeline(mode, exchange, portfolio, meta, strategy, risk, journal, notifier);
+           TradingMode mode = realTradingEnabled ? TradingMode.LIVE : TradingMode.PAPER;
+// STOP-FIX wiring (MVP defaults)
+com.quantor.application.ports.SubscriptionPort subscription = null;
+
+com.quantor.application.ports.TradingControlPort control = new com.quantor.application.ports.TradingControlPort() {
+    @Override
+    public boolean isTradingEnabled() {
+        return Boolean.parseBoolean(config.get("trading.enabled", "true"));
+    }
+    @Override
+    public String disabledReason() {
+        return config.get("trading.disabledReason", "Trading disabled");
+    }
+};
+
+int cooldownSeconds = config.getInt("trading.orderCooldownSeconds", 0);
+com.quantor.application.usecase.OrderCooldownGuard cooldown =
+        (cooldownSeconds > 0) ? new com.quantor.application.usecase.OrderCooldownGuard(cooldownSeconds) : null;
+
+String uid = config.get("userId", "local");
+
+return new TradingPipeline(
+        mode, exchange, portfolio, meta, strategy, risk, journal, notifier,
+        subscription, control, cooldown, uid
+);
+
         };
 
-        return new SessionService(factory, scheduler, notifier);
+        return new SessionService(factory, scheduler, notifier, config);
     }
 
     private static NotifierPort createNotifier(ConfigPort config) {

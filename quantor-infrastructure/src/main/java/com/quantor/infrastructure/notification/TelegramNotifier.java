@@ -2,13 +2,13 @@ package com.quantor.infrastructure.notification;
 
 import com.quantor.application.ports.NotifierPort;
 import okhttp3.*;
+
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 public class TelegramNotifier implements NotifierPort {
 
-    private static final MediaType JSON
-            = MediaType.parse("application/json; charset=utf-8");
+    private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
     private final String botToken;
     private final String chatId;
@@ -24,17 +24,22 @@ public class TelegramNotifier implements NotifierPort {
         this.chatId = chatId;
     }
 
+    /**
+     * Core notifier must be PLAIN text.
+     * No parse_mode to avoid Telegram HTML parsing errors (e.g. "<UUID>").
+     */
     @Override
-
-
     public void send(String text) {
+        sendPlain(text);
+    }
+
+    private void sendPlain(String text) {
         String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
 
         String json = """
                 {
                   "chat_id": "%s",
-                  "text": %s,
-                  "parse_mode": "HTML"
+                  "text": %s
                 }
                 """.formatted(chatId, toJsonString(text));
 
@@ -51,11 +56,37 @@ public class TelegramNotifier implements NotifierPort {
         }
     }
 
-    // ✅ ADDED: main menu (as you had before)
-    public void sendMainMenu(String currentModeLabel) {
+    /**
+     * Optional HTML sender for controlled templates only.
+     */
+    private void sendHtml(String html) {
+        String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
 
-        String text = """
-                📋 BinanceBot Main Menu
+        String json = """
+                {
+                  "chat_id": "%s",
+                  "text": %s,
+                  "parse_mode": "HTML"
+                }
+                """.formatted(chatId, toJsonString(html));
+
+        Request request = new Request.Builder()
+                .url(url)
+                .post(RequestBody.create(json, JSON))
+                .build();
+
+        try (Response resp = client.newCall(request).execute()) {
+            System.out.println("Telegram response: " + resp.code() + " " +
+                    (resp.body() != null ? resp.body().string() : ""));
+        } catch (IOException e) {
+            System.err.println("Telegram sendMessage error: " + e.getMessage());
+        }
+    }
+
+    // main menu with known-safe HTML (your existing feature)
+    public void sendMainMenu(String currentModeLabel) {
+        String html = """
+                📋 Quantor Main Menu
 
                 Current strategy mode:
                 <b>%s</b>
@@ -76,7 +107,7 @@ public class TelegramNotifier implements NotifierPort {
                 🎯 /ai_trade N — review trade N
 
                 You can press /menu anytime.
-                """.formatted(currentModeLabel);
+                """.formatted(escapeHtml(currentModeLabel));
 
         String keyboardJson = """
         {
@@ -106,6 +137,8 @@ public class TelegramNotifier implements NotifierPort {
         }
         """;
 
+        String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
+
         String json = """
                 {
                   "chat_id": "%s",
@@ -113,9 +146,7 @@ public class TelegramNotifier implements NotifierPort {
                   "parse_mode": "HTML",
                   "reply_markup": %s
                 }
-                """.formatted(chatId, toJsonString(text), keyboardJson);
-
-        String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
+                """.formatted(chatId, toJsonString(html), keyboardJson);
 
         Request request = new Request.Builder()
                 .url(url)
@@ -130,23 +161,20 @@ public class TelegramNotifier implements NotifierPort {
         }
     }
 
-    // ✅ If TelegramCommandBot uses this — keep it
     public void removeKeyboard(String text) {
-
         String keyboardJson = """
         { "remove_keyboard": true }
         """;
+
+        String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
 
         String json = """
             {
               "chat_id": "%s",
               "text": %s,
-              "parse_mode": "HTML",
               "reply_markup": %s
             }
             """.formatted(chatId, toJsonString(text), keyboardJson);
-
-        String url = "https://api.telegram.org/bot" + botToken + "/sendMessage";
 
         Request request = new Request.Builder()
                 .url(url)
@@ -159,6 +187,13 @@ public class TelegramNotifier implements NotifierPort {
         } catch (IOException e) {
             System.err.println("Telegram removeKeyboard error: " + e.getMessage());
         }
+    }
+
+    private static String escapeHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 
     private String toJsonString(String s) {

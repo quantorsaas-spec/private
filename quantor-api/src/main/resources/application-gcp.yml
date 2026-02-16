@@ -1,4 +1,3 @@
-# GCP profile (Cloud Run)
 server:
   port: ${PORT:8080}
 
@@ -6,7 +5,7 @@ spring:
   datasource:
     url: ${QUANTOR_DB_URL}
     username: ${QUANTOR_DB_USER}
-    password: ${QUANTOR_DB_PASS}
+    password: ${QUANTOR_DB_PASSWORD:${QUANTOR_DB_PASS:}}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: ${QUANTOR_DB_POOL_SIZE:10}
@@ -17,10 +16,10 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+    locations: classpath:db/migration
 
 quantor:
   telegram:
-    # Never poll Telegram from Cloud Run
     enabled: false
 
 logging:

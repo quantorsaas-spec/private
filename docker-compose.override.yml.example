@@ -1,0 +1,12 @@
+services:
+  api:
+    environment:
+      SERVER_PORT: "8080"
+      QUANTOR_TRADING_ENABLED: "true"
+      QUANTOR_TRADING_DISABLED_REASON: ""
+
+  worker:
+    environment:
+      QUANTOR_TRADING_ENABLED: "true"
+      QUANTOR_TRADING_DISABLED_REASON: ""
+      QUANTOR_RUNTIME_DEBUG_STOP_TRACE: "true"

@@ -7,6 +7,9 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest
 @ActiveProfiles("test")
 class SmokeContextTest {
-  @Test
-  void contextLoads() {}
+
+    @Test
+    void contextLoads() {
+        // если контекст поднялся — тест зелёный
+    }
 }

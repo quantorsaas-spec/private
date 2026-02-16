@@ -1,3 +1,4 @@
+// File: quantor-api/src/main/java/com/quantor/api/telegram/TelegramOpsBot.java
 package com.quantor.api.telegram;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -21,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.health.HealthComponent;
 import org.springframework.boot.actuate.health.HealthEndpoint;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -29,17 +31,30 @@ import org.springframework.stereotype.Component;
 /**
  * Minimal Telegram "ops" bot for local/dev MVP.
  *
- * Why: lets you validate end-to-end Telegram integration without touching user auth yet.
- * This bot is locked down by allowedUserIds.
+ * IMPORTANT:
+ * - Must NOT run together with another long-polling bot on the SAME token (HTTP 409).
+ * - Enable explicitly with quantor.telegram.ops.enabled=true
  *
  * Commands:
  * - /health : API health status
  * - /bots   : list last N bot instances
  */
 @Component
+@ConditionalOnProperty(
+    prefix = "quantor.telegram.ops",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = false
+)
 public class TelegramOpsBot implements SmartLifecycle {
 
   private static final Logger log = LoggerFactory.getLogger(TelegramOpsBot.class);
+
+  // Long-poll tuning:
+  // Telegram holds connection up to `timeout` seconds. Client timeout must be > timeout with margin.
+  private static final int TG_LONG_POLL_SECONDS = 25;
+  private static final Duration HTTP_REQUEST_TIMEOUT = Duration.ofSeconds(75);
+  private static final Duration HTTP_CONNECT_TIMEOUT = Duration.ofSeconds(10);
 
   private final TelegramBotProperties props;
   private final HealthEndpoint healthEndpoint;
@@ -59,7 +74,7 @@ public class TelegramOpsBot implements SmartLifecycle {
     this.healthEndpoint = healthEndpoint;
     this.botInstanceRepository = botInstanceRepository;
     this.objectMapper = objectMapper;
-    this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    this.http = HttpClient.newBuilder().connectTimeout(HTTP_CONNECT_TIMEOUT).build();
   }
 
   // =========================
@@ -70,12 +85,10 @@ public class TelegramOpsBot implements SmartLifecycle {
   public void start() {
     log.info("TelegramOpsBot lifecycle start() called");
 
-    if (running.get()) {
-      return;
-    }
+    if (running.get()) return;
 
     if (!props.enabled()) {
-      log.info("TelegramOpsBot disabled via config (quantor.telegram.enabled=false)");
+      log.info("TelegramOpsBot disabled via props (quantor.telegram.enabled=false)");
       return;
     }
 
@@ -100,9 +113,7 @@ public class TelegramOpsBot implements SmartLifecycle {
   @Override
   public void stop() {
     running.set(false);
-    if (pollThread != null) {
-      pollThread.interrupt();
-    }
+    if (pollThread != null) pollThread.interrupt();
     log.info("TelegramOpsBot stopped");
   }
 
@@ -111,11 +122,6 @@ public class TelegramOpsBot implements SmartLifecycle {
     return running.get();
   }
 
-  /**
-   * IMPORTANT:
-   * Use early phase for DEV/MVP.
-   * Do NOT use Integer.MAX_VALUE here.
-   */
   @Override
   public int getPhase() {
     return 0;
@@ -138,6 +144,7 @@ public class TelegramOpsBot implements SmartLifecycle {
 
   private void pollLoop() {
     long offset = 0;
+
     while (running.get() && !Thread.currentThread().isInterrupted()) {
       try {
         GetUpdatesResponse resp = getUpdates(offset);
@@ -146,15 +153,15 @@ public class TelegramOpsBot implements SmartLifecycle {
         }
 
         for (Update upd : resp.result) {
-          if (upd == null) {
-            continue;
-          }
+          if (upd == null) continue;
+
           offset = Math.max(offset, upd.updateId + 1);
 
           Message msg = upd.message;
           if (msg == null || msg.text == null || msg.chat == null || msg.from == null) {
             continue;
           }
+
           handleMessage(msg);
         }
       } catch (InterruptedException ie) {
@@ -170,12 +177,13 @@ public class TelegramOpsBot implements SmartLifecycle {
   private void handleMessage(Message msg) {
     long fromId = msg.from.id;
     long chatId = msg.chat.id;
-    String text = msg.text.trim();
 
-    // Exact allowlist check (no substring bugs)
+    String text = (msg.text == null) ? "" : msg.text.trim();
+    if (text.isBlank()) return;
+
+    // Exact allowlist check
     if (!props.allowedUserIdSet().contains(String.valueOf(fromId))) {
-      // silent deny (no noisy bot leaks)
-      return;
+      return; // silent deny
     }
 
     if (text.equals("/start") || text.equals("/help")) {
@@ -193,10 +201,11 @@ public class TelegramOpsBot implements SmartLifecycle {
       int limit = parseLimit(text).orElse(10);
       limit = Math.min(Math.max(limit, 1), 50);
 
-      var page = botInstanceRepository.findAll(
-          PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "updatedAt")));
-      List<BotInstanceEntity> list = page.getContent();
+      var page =
+          botInstanceRepository.findAll(
+              PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "updatedAt")));
 
+      List<BotInstanceEntity> list = page.getContent();
       if (list.isEmpty()) {
         sendMessage(chatId, "No bot instances yet.");
         return;
@@ -222,11 +231,8 @@ public class TelegramOpsBot implements SmartLifecycle {
   }
 
   private Optional<Integer> parseLimit(String text) {
-    // /bots 5
     String[] parts = text.split("\\s+");
-    if (parts.length < 2) {
-      return Optional.empty();
-    }
+    if (parts.length < 2) return Optional.empty();
     try {
       return Optional.of(Integer.parseInt(parts[1]));
     } catch (NumberFormatException e) {
@@ -245,23 +251,40 @@ public class TelegramOpsBot implements SmartLifecycle {
     String url =
         "https://api.telegram.org/bot"
             + props.botToken()
-            + "/getUpdates?timeout=30&offset="
+            + "/getUpdates?timeout="
+            + TG_LONG_POLL_SECONDS
+            + "&offset="
             + offset;
 
     HttpRequest req =
         HttpRequest.newBuilder()
             .uri(java.net.URI.create(url))
-            .timeout(Duration.ofSeconds(40))
+            .timeout(HTTP_REQUEST_TIMEOUT)
             .GET()
             .build();
 
-    HttpResponse<String> resp = http.send(req, BodyHandlers.ofString());
-    if (resp.statusCode() != 200) {
-      log.warn("Telegram getUpdates non-200: {}", resp.statusCode());
-      sleepSilently(1200);
+    try {
+      HttpResponse<String> resp = http.send(req, BodyHandlers.ofString());
+
+      int code = resp.statusCode();
+      if (code != 200) {
+        // 409 = another getUpdates is active with same token (two pollers)
+        if (code == 409) {
+          log.warn(
+              "Telegram getUpdates 409: another poller is active for this bot token. Stop the other instance or disable ops bot.");
+          sleepSilently(5000);
+          return null;
+        }
+        log.warn("Telegram getUpdates non-200: {}", code);
+        sleepSilently(1200);
+        return null;
+      }
+
+      return objectMapper.readValue(resp.body(), GetUpdatesResponse.class);
+    } catch (java.net.http.HttpTimeoutException e) {
+      // Normal for long-polling in imperfect networks; just retry silently
       return null;
     }
-    return objectMapper.readValue(resp.body(), GetUpdatesResponse.class);
   }
 
   private void sendMessage(long chatId, String text) {
@@ -277,7 +300,7 @@ public class TelegramOpsBot implements SmartLifecycle {
       HttpRequest req =
           HttpRequest.newBuilder()
               .uri(java.net.URI.create(url))
-              .timeout(Duration.ofSeconds(15))
+              .timeout(Duration.ofSeconds(20))
               .header("Content-Type", "application/x-www-form-urlencoded")
               .POST(BodyPublishers.ofString(body))
               .build();

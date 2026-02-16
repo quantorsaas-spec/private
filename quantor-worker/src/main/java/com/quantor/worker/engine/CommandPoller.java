@@ -7,8 +7,8 @@ import com.quantor.saas.infrastructure.engine.BotCommandEntity;
 import com.quantor.saas.infrastructure.engine.BotCommandRepository;
 import com.quantor.saas.infrastructure.engine.BotInstanceEntity;
 import com.quantor.saas.infrastructure.engine.BotInstanceRepository;
-import com.quantor.worker.util.JobParsing;
 import com.quantor.worker.metrics.WorkerMetrics;
+import com.quantor.worker.util.JobParsing;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
@@ -18,7 +18,8 @@ import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapPropagator;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -34,9 +35,14 @@ import java.util.List;
  * - claims commands with SELECT FOR UPDATE SKIP LOCKED
  * - retries with exponential backoff
  * - re-queues stuck PROCESSING commands (worker crash protection)
+ *
+ * DEBUG/OPS:
+ * - logs explicit stop/start sources with jobKey + cmdId + requestId + traceparent
  */
 @Component
 public class CommandPoller {
+
+  private static final Logger log = LoggerFactory.getLogger(CommandPoller.class);
 
   private final BotCommandRepository commands;
   private final BotInstanceRepository instances;
@@ -130,35 +136,49 @@ public class CommandPoller {
           .orElseThrow(() -> new IllegalArgumentException("Bot instance not found: " + cmd.getBotInstanceId()));
 
       ExecutionJob job = new ExecutionJob(
-        inst.getUserId().toString(),
-        inst.getStrategyId(),
-        ExchangeId.BINANCE,
-        ExchangeId.BINANCE,
-        JobParsing.symbol(inst.getSymbol()),
-        JobParsing.timeframe(inst.getInterval()),
-        inst.getLookback()
-    );
+          inst.getUserId().toString(),
+          inst.getStrategyId(),
+          ExchangeId.BINANCE,
+          ExchangeId.BINANCE,
+          JobParsing.symbol(inst.getSymbol()),
+          JobParsing.timeframe(inst.getInterval()),
+          inst.getLookback()
+      );
+
+      final String jobKey = safeJobKey(inst, job);
 
       try {
         switch (cmd.getCommand()) {
           case "START" -> {
+            log.warn("[ENGINE] START via COMMAND_POLL jobKey={} cmdId={} cmdStatus={} workerId={} requestId={} traceparent={}",
+                jobKey, cmd.getId(), cmd.getStatus(), workerId, safe(rid), safe(traceparent));
+
             sessions.start(job, inst.getPeriodMs());
             inst.setStatus("RUNNING");
             inst.setLeaseOwner(workerId);
             inst.setLeaseUntil(Instant.now().plus(leaseTtl));
           }
           case "STOP" -> {
+            log.warn("[ENGINE] STOP via COMMAND_POLL jobKey={} cmdId={} cmdStatus={} workerId={} requestId={} traceparent={}",
+                jobKey, cmd.getId(), cmd.getStatus(), workerId, safe(rid), safe(traceparent));
+
             sessions.stop(job);
             inst.setStatus("STOPPED");
             inst.setLeaseOwner(null);
             inst.setLeaseUntil(null);
           }
           case "PAUSE" -> {
+            log.warn("[ENGINE] PAUSE via COMMAND_POLL jobKey={} cmdId={} cmdStatus={} workerId={} requestId={} traceparent={}",
+                jobKey, cmd.getId(), cmd.getStatus(), workerId, safe(rid), safe(traceparent));
+
             sessions.pause(job);
             inst.setStatus("PAUSED");
             // keep lease; paused sessions still belong to the same executor
           }
           case "RESUME" -> {
+            log.warn("[ENGINE] RESUME via COMMAND_POLL jobKey={} cmdId={} cmdStatus={} workerId={} requestId={} traceparent={}",
+                jobKey, cmd.getId(), cmd.getStatus(), workerId, safe(rid), safe(traceparent));
+
             sessions.resume(job);
             inst.setStatus("RUNNING");
             inst.setLeaseOwner(workerId);
@@ -170,10 +190,14 @@ public class CommandPoller {
         instances.save(inst);
         commands.markDone(cmd.getId());
         metrics.incProcessed();
+
       } catch (Exception e) {
         String error = safeError(e);
         span.recordException(e);
         span.setStatus(StatusCode.ERROR, error);
+
+        log.error("[ENGINE] COMMAND FAILED jobKey={} cmd={} cmdId={} attempts={} workerId={} requestId={} err={}",
+            jobKey, cmd.getCommand(), cmd.getId(), cmd.getAttempts(), workerId, safe(rid), error, e);
 
         // Retry policy: exponential backoff until maxAttempts.
         if (cmd.getAttempts() < (maxAttempts - 1)) {
@@ -196,7 +220,6 @@ public class CommandPoller {
     }
   }
 
-
   private Duration exponentialBackoff(int attemptsSoFar) {
     // base * 2^attempts, with a reasonable cap
     long seconds = retryBase.getSeconds() * (1L << Math.min(attemptsSoFar, 10));
@@ -209,5 +232,19 @@ public class CommandPoller {
     if (msg == null || msg.isBlank()) msg = e.getClass().getSimpleName();
     if (msg.length() > 500) msg = msg.substring(0, 500);
     return msg;
+  }
+
+  private static String safe(String s) {
+    return (s == null) ? "" : s;
+  }
+
+  private static String safeJobKey(BotInstanceEntity inst, ExecutionJob job) {
+    try {
+      // Prefer canonical key if available.
+      return job.key();
+    } catch (Exception ignore) {
+      // Fallback to DB-only identity.
+      return "instId=" + inst.getId();
+    }
   }
 }

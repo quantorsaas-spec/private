@@ -1,3 +1,4 @@
+// File: quantor-infrastructure/src/main/java/com/quantor/infrastructure/telegram/TelegramCommandBot.java
 package com.quantor.infrastructure.telegram;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -5,8 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quantor.application.execution.ExecutionJob;
 import com.quantor.application.exchange.ExchangeId;
 import com.quantor.application.exchange.MarketSymbol;
-import com.quantor.application.exchange.Timeframe;
 import com.quantor.application.exchange.Timeframes;
+import com.quantor.application.guard.SubscriptionRequiredException;
 import com.quantor.application.ports.ConfigPort;
 import com.quantor.application.ports.NotifierPort;
 import com.quantor.application.service.SessionService;
@@ -17,6 +18,8 @@ import okhttp3.Response;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -31,6 +34,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *  /status  - show registry status
  *  /health  - health snapshot (last tick/error)
  *  /setkeys - store Binance keys securely in DB (encrypted)
+ *  /config  - show effective config snapshot (NO SECRETS)
+ *  /upgrade - show checkout link for PRO subscription
+ *
+ * P0 RULE:
+ * - userId must be provided explicitly (UUID). No silent fallback to "local".
  */
 public class TelegramCommandBot {
 
@@ -41,6 +49,8 @@ public class TelegramCommandBot {
     private final ConfigPort config;
     private final UserSecretsStore secretsStore;
     private final char[] masterPassword;
+
+    /** Explicit runtime userId (UUID string). */
     private final String userId;
 
     private enum Awaiting { NONE, BINANCE_API_KEY, BINANCE_API_SECRET }
@@ -57,8 +67,14 @@ public class TelegramCommandBot {
     private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile long offset = 0;
 
-    public TelegramCommandBot(String botToken, String chatId, NotifierPort notifier, SessionService sessions, ConfigPort config,
-                             UserSecretsStore secretsStore, char[] masterPassword, String userId) {
+    public TelegramCommandBot(String botToken,
+                             String chatId,
+                             NotifierPort notifier,
+                             SessionService sessions,
+                             ConfigPort config,
+                             UserSecretsStore secretsStore,
+                             char[] masterPassword,
+                             String userId) {
         this.botToken = botToken;
         this.chatId = chatId;
         this.notifier = notifier;
@@ -66,18 +82,20 @@ public class TelegramCommandBot {
         this.config = config;
         this.secretsStore = secretsStore;
         this.masterPassword = masterPassword;
-        this.userId = userId;
+
+        // P0: explicit runtime userId, no "local" fallback
+        this.userId = requireUuid(userId, "userId");
+        System.out.println(">>> TELEGRAM BOT USER ID = " + this.userId);
     }
 
     public void start() {
         if (!running.compareAndSet(false, true)) return;
-        safeSend("✅ Quantor Telegram bot started. Use /start /pause /resume /stop /status /health /setkeys");
+        safeSend("✅ Quantor Telegram bot started. Use /start /pause /resume /stop /status /health /setkeys /config /upgrade");
 
         while (running.get()) {
             try {
                 pollOnce();
             } catch (Exception e) {
-                // don't spam Telegram; log locally
                 System.err.println("Telegram poll error: " + e.getMessage());
                 sleep(1500);
             }
@@ -93,6 +111,7 @@ public class TelegramCommandBot {
         String url = "https://api.telegram.org/bot" + botToken + "/getUpdates" +
                 "?timeout=60" +
                 "&offset=" + offset;
+
         Request req = new Request.Builder().url(url).get().build();
 
         try (Response resp = http.newCall(req).execute()) {
@@ -115,11 +134,12 @@ public class TelegramCommandBot {
 
                 String fromChatId = msg.path("chat").path("id").asText();
                 if (chatId != null && !chatId.isBlank() && !chatId.equals(fromChatId)) {
-                    // ignore other chats
                     continue;
                 }
+
                 String text = msg.path("text").asText(null);
                 if (text == null) continue;
+
                 onCommand(text.trim());
             }
         }
@@ -127,13 +147,13 @@ public class TelegramCommandBot {
 
     public void onCommand(String cmd) {
         if (cmd == null || cmd.isBlank()) return;
-        // If we are in the middle of /setkeys flow, treat any text as input.
+
         if (awaiting != Awaiting.NONE && !cmd.trim().startsWith("/")) {
             onSecretInput(cmd.trim());
             return;
         }
 
-        String c = cmd.trim().toLowerCase();
+        String c = cmd.trim().toLowerCase(Locale.ROOT);
 
         switch (c) {
             case "/start" -> startDefault();
@@ -144,14 +164,66 @@ public class TelegramCommandBot {
             case "/health" -> safeSend(sessions.healthText());
             case "/setkeys" -> startSetKeys();
             case "/cancel" -> cancelFlow();
-            default -> safeSend("Unknown command: " + cmd + "\nUse /start /pause /resume /stop /status /health /setkeys");
+            case "/config" -> safeSend(configSnapshot());
+            case "/upgrade" -> sendUpgradeLink();
+            default -> safeSend("Unknown command: " + cmd + "\nUse /start /pause /resume /stop /status /health /setkeys /config /upgrade");
         }
+    }
+
+    // ===== Billing / upgrade =====
+    private void sendUpgradeLink() {
+        String base = config.get("billing.checkoutUrl", "");
+        if (base == null || base.isBlank()) {
+            safeSend("⚠ Checkout URL is not configured.\nSet billing.checkoutUrl in config.properties.");
+            return;
+        }
+
+        // userId is already validated UUID in ctor, but keep safety
+        String uid = this.userId;
+        try {
+            UUID.fromString(uid.trim());
+        } catch (Exception e) {
+            safeSend("⚠ userId must be UUID.\nFix runtime wiring (passed userId).");
+            safeSend("Checkout link (without binding):\n" + base);
+            return;
+        }
+
+        // IMPORTANT:
+        // Use Lemon Squeezy "custom data" so it appears in webhook payload as meta.custom_data.user_id
+        String sep = base.contains("?") ? "&" : "?";
+        String url = base + sep + "checkout[custom][user_id]=" + URLEncoder.encode(uid.trim(), StandardCharsets.UTF_8);
+
+        safeSend("🔒 To enable trading, upgrade to PRO:\n" + url);
+    }
+
+    // ===== STOP-FIX: global trading kill-switch =====
+    private boolean isTradingEnabledOrNotify() {
+        boolean enabled = Boolean.parseBoolean(config.get("trading.enabled", "true"));
+        if (enabled) return true;
+
+        String reason = config.get("trading.disabledReason", "Trading disabled");
+        safeSend("🛑 Trading disabled: " + reason);
+        return false;
+    }
+
+    // ===== STOP-FIX: LIVE gate (avoid accidental real trading) =====
+    private boolean isLiveAllowedOrNotify(ExecutionJob job) {
+        boolean liveEnabled = Boolean.parseBoolean(config.get("liveRealTradingEnabled", "false"));
+        if (!liveEnabled) return true;
+
+        String apiKey = firstSecret("BINANCE_API_KEY", "binance.apiKey", "apiKey");
+        String apiSecret = firstSecret("BINANCE_API_SECRET", "binance.apiSecret", "apiSecret");
+
+        if (apiKey == null || apiKey.isBlank() || apiSecret == null || apiSecret.isBlank()) {
+            safeSend("🛑 LIVE blocked: Binance keys not set. Use /setkeys.");
+            return false;
+        }
+        return true;
     }
 
     private void startSetKeys() {
         if (masterPassword == null || masterPassword.length == 0) {
-            safeSend("❌ QUANTOR_MASTER_PASSWORD is not set.\n" +
-                    "On Windows PowerShell: setx QUANTOR_MASTER_PASSWORD \"your-strong-password\" (then reopen terminal)");
+            safeSend("❌ QUANTOR_MASTER_PASSWORD is not set.");
             return;
         }
         if (secretsStore == null) {
@@ -172,7 +244,6 @@ public class TelegramCommandBot {
     private void onSecretInput(String text) {
         if (text == null) return;
 
-        // Avoid accidental leakage via logs
         String v = text.trim();
         if (v.isBlank()) {
             safeSend("⚠ Empty value. Try again or /cancel.");
@@ -191,6 +262,7 @@ public class TelegramCommandBot {
             try {
                 secretsStore.putPlaintext(userId, "BINANCE_API_KEY", tempApiKey, masterPassword);
                 secretsStore.putPlaintext(userId, "BINANCE_API_SECRET", apiSecret, masterPassword);
+
                 awaiting = Awaiting.NONE;
                 tempApiKey = null;
                 safeSend("✅ Binance keys saved securely (encrypted in DB) for user: " + userId);
@@ -203,15 +275,23 @@ public class TelegramCommandBot {
     }
 
     private ExecutionJob defaultJob() {
-        String symbol = first("trade.symbol", "symbol", "BTCUSDT");
+        String symbol = first("trade.symbol", "symbol", "BTC/USDT");
         String interval = first("trade.interval", "interval", "1m");
         int lookback = config.getInt("trade.lookback", 200);
-        String userId = config.get("userId", "local");
+
+        // P0: always use runtime userId (validated UUID)
+        String uid = this.userId;
+
         String strategyId = config.get("strategyType", "online");
-        ExchangeId ex = ExchangeId.valueOf(config.get("exchange", "BINANCE").trim().toUpperCase());
-        ExchangeId md = ExchangeId.valueOf(config.get("paper.marketDataExchange", "BINANCE").trim().toUpperCase());
+
+        String exRaw = config.get("trade.exchange", null);
+        if (exRaw == null || exRaw.isBlank()) exRaw = config.get("exchange", "BINANCE");
+        ExchangeId ex = ExchangeId.valueOf(exRaw.trim().toUpperCase(Locale.ROOT));
+
+        ExchangeId md = ExchangeId.valueOf(config.get("paper.marketDataExchange", "BINANCE").trim().toUpperCase(Locale.ROOT));
         if (ex != ExchangeId.PAPER) md = ex;
-        return new ExecutionJob(userId, strategyId, ex, md, MarketSymbol.parse(symbol), Timeframes.parse(interval), lookback);
+
+        return new ExecutionJob(uid, strategyId, ex, md, MarketSymbol.parse(symbol), Timeframes.parse(interval), lookback);
     }
 
     private long defaultPeriodMs() {
@@ -220,9 +300,20 @@ public class TelegramCommandBot {
     }
 
     private void startDefault() {
+        if (!isTradingEnabledOrNotify()) return;
+
         ExecutionJob job = defaultJob();
-        sessions.start(job, defaultPeriodMs());
-        safeSend("▶ Started: " + job.key());
+        if (!isLiveAllowedOrNotify(job)) return;
+
+        try {
+            sessions.start(job, defaultPeriodMs());
+            safeSend("▶ Started: " + job.key());
+        } catch (SubscriptionRequiredException e) {
+            safeSend("🔒 Subscription required to start trading.\nUse /upgrade to activate PRO.");
+            sendUpgradeLink();
+        } catch (Exception e) {
+            safeSend("❌ Failed to start: " + safeMessage(e));
+        }
     }
 
     private void pauseDefault() {
@@ -232,15 +323,62 @@ public class TelegramCommandBot {
     }
 
     private void resumeDefault() {
+        if (!isTradingEnabledOrNotify()) return;
+
         ExecutionJob job = defaultJob();
-        sessions.resume(job);
-        safeSend("▶ Resumed: " + job.key());
+        if (!isLiveAllowedOrNotify(job)) return;
+
+        try {
+            sessions.resume(job);
+            safeSend("▶ Resumed: " + job.key());
+        } catch (SubscriptionRequiredException e) {
+            safeSend("🔒 Subscription required to resume trading.\nUse /upgrade to activate PRO.");
+            sendUpgradeLink();
+        } catch (Exception e) {
+            safeSend("❌ Failed to resume: " + safeMessage(e));
+        }
     }
 
     private void stopDefault() {
         ExecutionJob job = defaultJob();
         sessions.stop(job);
         safeSend("⛔ Stopped: " + job.key());
+    }
+
+    private String safeMessage(Exception e) {
+        if (e == null) return "unknown";
+        String m = e.getMessage();
+        return (m == null || m.isBlank()) ? e.getClass().getSimpleName() : m;
+    }
+
+    private String configSnapshot() {
+        // NO SECRETS here.
+        StringBuilder sb = new StringBuilder();
+        sb.append("Config snapshot (no secrets)\n");
+
+        // show runtime userId (authoritative)
+        sb.append("- userId=").append(this.userId).append("\n");
+        sb.append("- mode=").append(config.get("mode", "TEST")).append("\n");
+
+        sb.append("- trading.enabled=").append(config.get("trading.enabled", "true")).append("\n");
+        sb.append("- trading.disabledReason=").append(config.get("trading.disabledReason", "")).append("\n");
+
+        sb.append("- liveRealTradingEnabled=").append(config.get("liveRealTradingEnabled", "false")).append("\n");
+
+        sb.append("- billing.checkoutUrl=").append(config.get("billing.checkoutUrl", "")).append("\n");
+
+        String exRaw = config.get("trade.exchange", null);
+        if (exRaw == null || exRaw.isBlank()) exRaw = config.get("exchange", "BINANCE");
+        sb.append("- exchange=").append(exRaw).append("\n");
+
+        sb.append("- paper.marketDataExchange=").append(config.get("paper.marketDataExchange", "BINANCE")).append("\n");
+
+        sb.append("- trade.symbol=").append(first("trade.symbol", "symbol", "BTC/USDT")).append("\n");
+        sb.append("- trade.interval=").append(first("trade.interval", "interval", "1m")).append("\n");
+        sb.append("- trade.lookback=").append(config.getInt("trade.lookback", 200)).append("\n");
+        sb.append("- strategyType=").append(config.get("strategyType", "online")).append("\n");
+
+        return sb.toString().trim();
     }
 
     private void safeSend(String msg) {
@@ -257,9 +395,23 @@ public class TelegramCommandBot {
         return (v == null || v.isBlank()) ? def : v;
     }
 
+    private String firstSecret(String... keys) {
+        if (keys == null) return null;
+        for (String k : keys) {
+            if (k == null || k.isBlank()) continue;
+            try {
+                String v = config.getSecret(k);
+                if (v != null && !v.isBlank()) return v;
+            } catch (Exception ignore) {
+                // decrypt fail => treat as missing
+            }
+        }
+        return null;
+    }
+
     private static long intervalToMs(String interval) {
         if (interval == null) return 60_000L;
-        String s = interval.trim().toLowerCase();
+        String s = interval.trim().toLowerCase(Locale.ROOT);
         try {
             if (s.endsWith("ms")) return Long.parseLong(s.substring(0, s.length() - 2));
             if (s.endsWith("s")) return Long.parseLong(s.substring(0, s.length() - 1)) * 1000L;
@@ -272,5 +424,18 @@ public class TelegramCommandBot {
 
     private static void sleep(long ms) {
         try { Thread.sleep(ms); } catch (Exception ignore) {}
+    }
+
+    private static String requireUuid(String raw, String name) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException(name + " is blank (must be UUID)");
+        }
+        String v = raw.trim();
+        try {
+            UUID.fromString(v);
+            return v;
+        } catch (Exception e) {
+            throw new IllegalArgumentException(name + " must be UUID, got: " + raw);
+        }
     }
 }

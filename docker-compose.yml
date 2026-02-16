@@ -18,6 +18,8 @@ services:
       retries: 20
 
   api:
+    volumes:
+       - ./config:/app/config:ro
     env_file:
       - /home/quantor/.quantor.env
     build:
@@ -29,14 +31,16 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      QUANTOR_BILLING_FORCE_PAID: "true"
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
-
+      QUANTOR_USER_ID: "622af9a3-42b1-40e6-9c1d-d425a94679a0"
       QUANTOR_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-quantor}
       QUANTOR_DB_USER: ${POSTGRES_USER:-quantor}
       QUANTOR_DB_PASSWORD: ${POSTGRES_PASSWORD:-quantor}
 
       QUANTOR_TRACING_ENABLED: ${QUANTOR_TRACING_ENABLED:-false}
       QUANTOR_OTLP_ENDPOINT: ${QUANTOR_OTLP_ENDPOINT:-""}
+
 
       JAVA_TOOL_OPTIONS: >-
         -XX:MaxRAMPercentage=60

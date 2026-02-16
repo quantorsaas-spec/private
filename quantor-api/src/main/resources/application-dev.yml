@@ -1,29 +1,36 @@
-# Dev profile overrides (local only)
+# File: quantor-worker/src/main/resources/application.yml
 
 spring:
-  datasource:
-    # Use explicit IPv4 loopback to avoid localhost->IPv6 (::1) issues in some environments.
-    url: ${QUANTOR_DB_URL:jdbc:postgresql://127.0.0.1:5432/quantor}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,env
+  endpoint:
+    env:
+      show-values: NEVER
 
 quantor:
   telegram:
-    enabled: false
-  auth:
-    # Dev-only default to allow local startup without exporting secrets into env.
-    # In every non-dev environment you MUST set QUANTOR_JWT_SECRET.
-    jwtSecret: ${QUANTOR_JWT_SECRET:dev_jwt_secret_change_me}
-
-  telegram:
-    # Ops bot (TelegramOpsBot) uses these properties.
-    enabled: ${QUANTOR_TELEGRAM_ENABLED:true}
+    opsEnabled: false
+    enabled: ${QUANTOR_TELEGRAM_ENABLED:false}
     botToken: ${QUANTOR_TELEGRAM_BOT_TOKEN:}
     allowedUserIds: ${QUANTOR_TELEGRAM_ALLOWED_USER_IDS:}
     adminChatId: ${QUANTOR_TELEGRAM_ADMIN_CHAT_ID:}
+    ops:
+      enabled: false
+  auth:
+    jwtSecret: ${QUANTOR_JWT_SECRET:dev_jwt_secret_change_me}
 
   lemonsqueezy:
-    # In dev, allow empty webhook secret for local testing.
     webhookSecret: ${QUANTOR_LEMONSQUEEZY_WEBHOOK_SECRET:}
-
 logging:
-  level:
-    com.quantor.api.telegram: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} requestId=%X{requestId} - %msg%n"

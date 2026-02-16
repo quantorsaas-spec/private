@@ -1,38 +1,45 @@
+// File: quantor-api/src/main/java/com/quantor/api/wiring/QuantorWiringConfig.java
 package com.quantor.api.wiring;
 
-import com.quantor.application.ports.ConfigPort;
-import com.quantor.application.service.SessionService;
+import com.quantor.api.billing.ForcePaidSubscriptionPort;
 import com.quantor.application.guard.TradePermissionGuard;
+import com.quantor.application.ports.ConfigPort;
 import com.quantor.application.ports.SubscriptionPort;
 import com.quantor.application.ports.TradingSessionRepository;
 import com.quantor.application.service.CoreTradingOrchestrator;
+import com.quantor.application.service.SessionService;
 import com.quantor.db.TradingSessionSqlRepository;
-import javax.sql.DataSource;
-import org.springframework.jdbc.core.JdbcTemplate;
 import com.quantor.infrastructure.config.FileConfigService;
 import com.quantor.infrastructure.db.UserSecretsStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import javax.sql.DataSource;
 import java.io.IOException;
+import java.util.Locale;
 
-/**
- * Composition root for Quantor.
- *
- * All production wiring must live in quantor-api.
- */
 @Configuration
 public class QuantorWiringConfig {
 
     @Bean
     public ConfigPort configPort() throws IOException {
-        // Loads from ./config/config.properties and secrets.* using the existing infra adapter
         return FileConfigService.defaultFromWorkingDir();
     }
 
+    /**
+     * Billing/subscription boundary.
+     * P0 rule: FAIL-CLOSED in prod; DEV switch via billing.forcePaid=true.
+     */
     @Bean
-    public SessionService sessionService(ConfigPort config) {
-        return Bootstrap.createSessionService(config);
+public SubscriptionPort subscriptionPort(DataSource dataSource) {
+    return new com.quantor.db.SubscriptionSqlPort(dataSource);
+}
+
+
+
+    @Bean
+    public SessionService sessionService(ConfigPort config, SubscriptionPort subscriptionPort) {
+        return Bootstrap.createSessionService(config, subscriptionPort);
     }
 
     @Bean
@@ -40,29 +47,28 @@ public class QuantorWiringConfig {
         return new UserSecretsStore();
     }
 
-
-    // --- P0 SaaS Core wiring ---
-
     @Bean
     public TradingSessionRepository tradingSessionRepository() {
         return new TradingSessionSqlRepository();
     }
 
     @Bean
-    public SubscriptionPort subscriptionPort(DataSource dataSource) {
-        return new PostgresSubscriptionPort(new JdbcTemplate(dataSource));
-    }
-@Bean
     public TradePermissionGuard tradePermissionGuard(SubscriptionPort subscriptionPort) {
         return new TradePermissionGuard(subscriptionPort);
     }
 
     @Bean
-    public CoreTradingOrchestrator coreTradingOrchestrator(TradePermissionGuard guard,
-                                                          TradingSessionRepository repo,
-                                                          SessionService sessionService) {
-        // P0 defaults: BINANCE BTC/USDT M1. Move to config later.
+    public CoreTradingOrchestrator coreTradingOrchestrator(
+            TradePermissionGuard guard,
+            TradingSessionRepository repo,
+            SessionService sessionService
+    ) {
         return CoreTradingOrchestrator.defaults(guard, repo, sessionService);
     }
 
+    private static boolean isTrue(String v) {
+        if (v == null) return false;
+        String s = v.trim().toLowerCase(Locale.ROOT);
+        return s.equals("true") || s.equals("1") || s.equals("yes") || s.equals("y");
+    }
 }

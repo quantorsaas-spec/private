@@ -9,28 +9,42 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Telegram config.
  *
  * IMPORTANT:
- * - This is intended for local/dev MVP (ops bot) only.
- * - Do NOT hardcode tokens in YAML. Use env vars.
+ * - Local / dev MVP only
+ * - Tokens must come from env or secrets.properties
  */
 @ConfigurationProperties(prefix = "quantor.telegram")
 public record TelegramBotProperties(
+
     boolean enabled,
+
+    /**
+     * Enable Ops (polling) bot.
+     * Must be FALSE when any other Telegram bot is running.
+     */
+    boolean opsEnabled,
+
     String botToken,
+
     /**
      * Comma-separated list of allowed Telegram user ids.
-     * Example: "12345,67890".
+     * Example: "12345,67890"
      */
     String allowedUserIds,
-    /** Optional chat id to which the bot can send notifications in the future. */
-    Long opsChatId) {
 
-  public Set<String> allowedUserIdSet() {
-    if (allowedUserIds == null || allowedUserIds.isBlank()) {
-      return Set.of();
+    /**
+     * Optional chat id for future notifications
+     */
+    Long opsChatId
+
+) {
+
+    public Set<String> allowedUserIdSet() {
+        if (allowedUserIds == null || allowedUserIds.isBlank()) {
+            return Set.of();
+        }
+        return Arrays.stream(allowedUserIds.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isBlank())
+            .collect(Collectors.toUnmodifiableSet());
     }
-    return Arrays.stream(allowedUserIds.split(","))
-        .map(String::trim)
-        .filter(s -> !s.isBlank())
-        .collect(Collectors.toUnmodifiableSet());
-  }
 }

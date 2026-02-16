@@ -1,40 +1,62 @@
 # =========================
 # Quantor - repo hygiene
 
-# build (Maven/Gradle)
+# --- Build outputs ---
 **/target/
 **/build/
-# logs
+# --- Logs ---
 *.log
-# runtime data / local state
-/data/
+# --- Runtime data / state ---
+data/
 **/data/
 *.db
 *.sqlite
 *.sqlite3
-# secrets / env
-.env
-**/.env
-config/*.enc
-config/secrets.*
-config/audit/
-config/.env
-quantor-cli/config/secrets.*
-quantor-cli/config/audit/
-quantor-cli/config/.env
-# commit ONLY examples
-config/*.properties
-quantor-cli/config/*.properties
-!config/*.example
-!quantor-cli/config/*.example
-# IDE
+# --- IDE ---
 .idea/
 .vscode/
 *.iml
-# OS
+# --- OS ---
 .DS_Store
 Thumbs.db
 *Zone.Identifier*
-# misc caches
-.cache/
-.tmp/
+*:Zone.Identifier
+# --- Secrets / env (NEVER commit) ---
+.env
+**/.env
+*.env
+*.env.*
+*.properties.local
+*.secret*
+*.pem
+*.key
+*.p12
+*.jks
+# Quantor config secrets
+config/.env
+config/secrets.env
+config/secrets.properties
+config/secrets.*
+config/*.enc
+config/audit/
+quantor-cli/config/.env
+quantor-cli/config/secrets.*
+quantor-cli/config/audit/
+# --- Local config (commit only examples) ---
+# Ignore all real config files
+config/config.properties
+config/**/config.properties
+quantor-cli/config/config.properties
+quantor-cli/config/**/config.properties
+# Allow templates/examples
+!config/*.example
+!config/**/**/*.example
+!quantor-cli/config/*.example
+!quantor-cli/config/**/**/*.example
+# never commit real cli config
+quantor-cli/src/main/resources/config.properties
+# runtime tool state
+/tools/.engine_last_job_key
+tools/*.bak.*
+# local override only
+docker-compose.override.yml

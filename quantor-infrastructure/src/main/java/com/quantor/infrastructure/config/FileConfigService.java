@@ -1,3 +1,4 @@
+// File: quantor-infrastructure/src/main/java/com/quantor/infrastructure/config/FileConfigService.java
 package com.quantor.infrastructure.config;
 
 import com.quantor.application.ports.ConfigPort;
@@ -35,7 +36,8 @@ public final class FileConfigService implements ConfigPort {
     private final Path profileDir;
     private final Path accountDir;
     private final String masterPassword;
-    private final com.quantor.infrastructure.db.UserSecretsStore secretStore = new com.quantor.infrastructure.db.UserSecretsStore();
+    private final com.quantor.infrastructure.db.UserSecretsStore secretStore =
+            new com.quantor.infrastructure.db.UserSecretsStore();
 
     private FileConfigService(Path profileDir, Path accountDir) throws IOException {
         this.profileDir = profileDir;
@@ -88,7 +90,7 @@ public final class FileConfigService implements ConfigPort {
         }
 
         loadPropsIfExists(profileDir.resolve("secrets.properties"));
-        loadPropsIfExists(profileDir.resolve("secrets.enc")); // <-- добавили
+        loadPropsIfExists(profileDir.resolve("secrets.enc"));
 
         if (accountDir != null) {
             Map<String, String> aenv = DotEnv.loadIfExists(accountDir.resolve(".env"));
@@ -96,10 +98,9 @@ public final class FileConfigService implements ConfigPort {
                 props.setProperty(e.getKey(), e.getValue());
             }
             loadPropsIfExists(accountDir.resolve("secrets.properties"));
-            loadPropsIfExists(accountDir.resolve("secrets.enc")); // <-- добавили
+            loadPropsIfExists(accountDir.resolve("secrets.enc"));
         }
     }
-
 
     private void loadPropsIfExists(Path file) throws IOException {
         if (file == null || !Files.exists(file)) return;
@@ -110,6 +111,8 @@ public final class FileConfigService implements ConfigPort {
 
     private void applyEnvOverrides() {
         Map<String, String> env = System.getenv();
+
+        // override known keys via QUANTOR_* mapping
         for (String key : new LinkedHashMap<>(propsToMap()).keySet()) {
             String envKey = toEnvKey(key);
             String val = env.get(envKey);
@@ -135,20 +138,15 @@ public final class FileConfigService implements ConfigPort {
     /**
      * Maps a Java-properties key into an env-var key.
      *
-     * We support camelCase (botToken/chatId/apiKey/chatGptApiUrl, ...).
      * Examples:
      * - telegram.botToken  -> QUANTOR_TELEGRAM_BOT_TOKEN
      * - telegram.chatId    -> QUANTOR_TELEGRAM_CHAT_ID
      * - apiKey             -> QUANTOR_API_KEY
      */
     private static String toEnvKey(String key) {
-        // 1) dots -> underscores
         String s = key.replace('.', '_');
-        // 2) camelCase -> snake_case (keep existing underscores)
         s = s.replaceAll("([a-z0-9])([A-Z])", "$1_$2");
-        // 3) upper-case
-        String normalized = s.toUpperCase();
-        return "QUANTOR_" + normalized;
+        return "QUANTOR_" + s.toUpperCase();
     }
 
     private static String masterPasswordOrNull() {
@@ -188,8 +186,7 @@ public final class FileConfigService implements ConfigPort {
 
     public String get(String key, String defaultValue) {
         String v = props.getProperty(key);
-        if (v == null) return defaultValue;
-        return v;
+        return (v == null) ? defaultValue : v;
     }
 
     @Override
@@ -201,8 +198,13 @@ public final class FileConfigService implements ConfigPort {
         // 1) DB secrets (preferred)
         String userId = resolveUserId();
         if (masterPassword != null && !masterPassword.isBlank()) {
-            String fromDb = secretStore.getDecrypted(userId, key, masterPassword.toCharArray());
-            if (fromDb != null && !fromDb.isBlank()) return fromDb;
+            try {
+                String fromDb = secretStore.getDecrypted(userId, key, masterPassword.toCharArray());
+                if (fromDb != null && !fromDb.isBlank()) return fromDb;
+            } catch (Exception ignore) {
+                // IMPORTANT: do not crash app if DB contains stale/corrupted ciphertext
+                // (e.g., master password rotated). We'll fall back to file/env.
+            }
         }
 
         // 2) File secrets (fallback)
@@ -230,11 +232,14 @@ public final class FileConfigService implements ConfigPort {
     /**
      * One-time migration: if secrets exist in files, copy them into DB encrypted.
      * DB is always preferred afterwards.
+     *
+     * Safety:
+     * - If DB already has value => keep it (do not overwrite).
+     * - If file secret is broken ENC(...) => skip (do not crash app).
      */
     private void migrateKnownSecretsToDb() {
         if (masterPassword == null || masterPassword.isBlank()) return;
 
-        // allow disabling migration
         String migrateFlag = props.getProperty("secrets.migrateToDb", "true");
         if (!Boolean.parseBoolean(migrateFlag)) return;
 
@@ -242,9 +247,7 @@ public final class FileConfigService implements ConfigPort {
         java.util.List<String> keys = new java.util.ArrayList<>();
 
         for (com.quantor.application.config.ConfigKey ck : com.quantor.application.config.ConfigKey.values()) {
-            if (ck.isSecret()) {
-                keys.add(ck.key());
-            }
+            if (ck.isSecret()) keys.add(ck.key());
         }
 
         // Legacy aliases kept for backward compatibility
@@ -261,13 +264,24 @@ public final class FileConfigService implements ConfigPort {
             String inDb = secretStore.getEncrypted(userId, k);
             if (inDb != null && !inDb.isBlank()) continue;
 
-            // decrypt if value is ENC(...)
             String plaintext = current.trim();
+
+            // decrypt if value is ENC(...)
             if (plaintext.startsWith("ENC(") && plaintext.endsWith(")")) {
-                String payload = plaintext.substring(4, plaintext.length() - 1);
-                plaintext = AesGcmCrypto.decryptFromBase64(payload, masterPassword.toCharArray());
+                try {
+                    String payload = plaintext.substring(4, plaintext.length() - 1);
+                    plaintext = AesGcmCrypto.decryptFromBase64(payload, masterPassword.toCharArray());
+                } catch (Exception e) {
+                    // skip broken secret; don't brick startup
+                    continue;
+                }
             }
-            secretStore.putPlaintext(userId, k, plaintext, masterPassword.toCharArray());
+
+            try {
+                secretStore.putPlaintext(userId, k, plaintext, masterPassword.toCharArray());
+            } catch (Exception ignore) {
+                // no-op: migration must not break startup
+            }
         }
     }
 }

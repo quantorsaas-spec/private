@@ -1,19 +1,25 @@
+// File: quantor-api/src/main/java/com/quantor/api/wiring/PostgresSubscriptionPort.java
 package com.quantor.api.wiring;
 
 import com.quantor.application.ports.SubscriptionPort;
 import com.quantor.domain.trading.UserId;
-import java.sql.ResultSet;
-import java.time.Instant;
-import java.util.Optional;
-import java.util.UUID;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.sql.ResultSet;
+import java.time.OffsetDateTime;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Postgres-backed implementation of {@link SubscriptionPort}.
  *
- * IMPORTANT: the public API still uses {@link UserId} as a string.
- * In PROD we treat this string as a UUID that matches users.id / subscriptions.user_id.
+ * IMPORTANT:
+ * - In PROD we treat UserId.value() as a UUID that matches users.id / subscriptions.user_id.
+ * - For developer convenience we also allow passing email; it will be resolved to users.id.
+ *
+ * SECURITY (fail-closed):
+ * - If user cannot be resolved to a real UUID -> return Optional.empty() (core will treat as BLOCKED).
  */
 public final class PostgresSubscriptionPort implements SubscriptionPort {
 
@@ -24,77 +30,69 @@ public final class PostgresSubscriptionPort implements SubscriptionPort {
     }
 
     @Override
-    public SubscriptionPort.Status status(UserId userId) {
-        UUID userUuid;
-        try {
-            userUuid = UUID.fromString(userId.value());
-        } catch (Exception e) {
-            // Developer convenience: allow querying by email.
-            // If it doesn't match any user, treat as FREE.
-            try {
-                userUuid = jdbc.queryForObject(
-                        "SELECT id FROM users WHERE lower(email) = lower(?) LIMIT 1",
-                        (rs, rowNum) -> (UUID) rs.getObject(1),
-                        userId.value()
-                );
-                if (userUuid == null) {
-                    return SubscriptionPort.Status.FREE;
-                }
-            } catch (EmptyResultDataAccessException notFound) {
-                return SubscriptionPort.Status.FREE;
-            }
+    public Optional<SubscriptionSnapshot> findLatest(UserId userId) {
+        UUID userUuid = resolveUserUuid(userId).orElse(null);
+        if (userUuid == null) {
+            // fail-closed: cannot resolve user -> no entitlement proven
+            return Optional.empty();
         }
-
-        Optional<Row> row = findLatestSubscription(userUuid);
-        if (row.isEmpty()) {
-            return SubscriptionPort.Status.FREE;
-        }
-
-        Row r = row.get();
-        if (r.frozen) {
-            return SubscriptionPort.Status.BLOCKED;
-        }
-
-        // Normalize status string from DB.
-        String s = (r.status == null ? "" : r.status.trim().toLowerCase());
-        Instant now = Instant.now();
-        Instant endsAt = r.currentPeriodEndsAt;
-
-        if ("active".equals(s)) {
-            return SubscriptionPort.Status.PAID;
-        }
-
-        // Grace period behavior for non-active statuses.
-        if (endsAt != null && endsAt.isAfter(now)) {
-            return SubscriptionPort.Status.GRACE;
-        }
-
-        return SubscriptionPort.Status.FREE;
+        return findLatestSubscription(userUuid);
     }
 
-    private Optional<Row> findLatestSubscription(UUID userUuid) {
+    /**
+     * Resolve UserId to users.id (UUID).
+     * Accepts:
+     * - UUID string
+     * - email (dev convenience)
+     */
+    private Optional<UUID> resolveUserUuid(UserId userId) {
+        if (userId == null || userId.value() == null || userId.value().isBlank()) {
+            return Optional.empty();
+        }
+
+        String raw = userId.value().trim();
+
+        // 1) UUID direct
         try {
-            Row row = jdbc.queryForObject(
-                    "select status, current_period_ends_at, frozen "
-                            + "from subscriptions "
-                            + "where user_id = ? "
-                            + "order by updated_at desc nulls last "
-                            + "limit 1",
-                    (ResultSet rs, int rowNum) -> {
-                        // Be defensive: depending on driver/version, timestamptz may map more reliably to OffsetDateTime.
-                        java.time.OffsetDateTime odt = rs.getObject("current_period_ends_at", java.time.OffsetDateTime.class);
-                        Instant ends = (odt == null ? null : odt.toInstant());
-                        return new Row(
-                                rs.getString("status"),
-                                ends,
-                                rs.getBoolean("frozen"));
-                    },
-                    userUuid);
-            return Optional.ofNullable(row);
-        } catch (EmptyResultDataAccessException e) {
+            return Optional.of(UUID.fromString(raw));
+        } catch (Exception ignore) {
+            // continue to email resolution
+        }
+
+        // 2) email -> users.id
+        try {
+            UUID uuid = jdbc.queryForObject(
+                    "SELECT id FROM users WHERE lower(email) = lower(?) LIMIT 1",
+                    (rs, rowNum) -> (UUID) rs.getObject(1),
+                    raw
+            );
+            return Optional.ofNullable(uuid);
+        } catch (EmptyResultDataAccessException notFound) {
             return Optional.empty();
         }
     }
 
-    private record Row(String status, Instant currentPeriodEndsAt, boolean frozen) {}
+    private Optional<SubscriptionSnapshot> findLatestSubscription(UUID userUuid) {
+        try {
+            SubscriptionSnapshot snap = jdbc.queryForObject(
+                    "select user_id, plan, status, current_period_ends_at, frozen " +
+                            "from subscriptions " +
+                            "where user_id = ? " +
+                            "order by updated_at desc nulls last " +
+                            "limit 1",
+                    (ResultSet rs, int rowNum) -> {
+                        UUID uid = (UUID) rs.getObject("user_id");
+                        String plan = rs.getString("plan");
+                        String status = rs.getString("status");
+                        OffsetDateTime endsAt = rs.getObject("current_period_ends_at", OffsetDateTime.class);
+                        boolean frozen = rs.getBoolean("frozen");
+                        return new SubscriptionSnapshot(uid, plan, status, frozen, endsAt);
+                    },
+                    userUuid
+            );
+            return Optional.ofNullable(snap);
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
+    }
 }

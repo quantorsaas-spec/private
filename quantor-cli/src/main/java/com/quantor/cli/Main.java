@@ -7,7 +7,6 @@ import com.quantor.application.exchange.Timeframe;
 import com.quantor.application.exchange.Timeframes;
 import com.quantor.application.ports.ConfigPort;
 import com.quantor.application.service.SessionService;
-import com.quantor.cli.TelegramRunner;
 import com.quantor.cli.bootstrap.Bootstrap;
 import com.quantor.cli.tools.ConfigDoctor;
 import com.quantor.cli.tools.ConfigureTool;
@@ -82,6 +81,7 @@ public class Main {
                 System.exit(PreflightTool.run(tail));
                 return;
 
+            // STOP-FIX: Telegram mode MUST NOT auto-start sessions from CLI.
             case "telegram":
                 System.exit(TelegramRunner.run(tail));
                 return;
@@ -132,6 +132,14 @@ public class Main {
         }
         config = oc;
 
+        // STOP-FIX: global gate for CLI "run" mode
+        boolean tradingEnabled = Boolean.parseBoolean(config.get("trading.enabled", "true"));
+        if (!tradingEnabled) {
+            String reason = config.get("trading.disabledReason", "Trading disabled");
+            System.out.println("TRADING DISABLED: " + reason);
+            return;
+        }
+
         SessionService sessions = Bootstrap.createSessionService(config);
 
         // Exchange selection (supports either "exchange" or "trade.exchange" config keys)
@@ -174,7 +182,7 @@ public class Main {
         if (tf == null) return 60_000L;
         return switch (tf) {
             case M1 -> 60_000L;
-			case M3 -> 3 * 60_000L;
+            case M3 -> 3 * 60_000L;
             case M5 -> 5 * 60_000L;
             case M15 -> 15 * 60_000L;
             case M30 -> 30 * 60_000L;

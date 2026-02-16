@@ -3,10 +3,13 @@ package com.quantor.application.usecase;
 import com.quantor.application.exchange.ExchangePort;
 import com.quantor.application.exchange.MarketSymbol;
 import com.quantor.application.exchange.Timeframe;
+import com.quantor.application.guard.TradingStoppedException;
 import com.quantor.application.ports.NotifierPort;
 import com.quantor.application.ports.PortfolioPort;
+import com.quantor.application.ports.SubscriptionPort;
 import com.quantor.application.ports.SymbolMetaPort;
 import com.quantor.application.ports.TradeJournalPort;
+import com.quantor.application.ports.TradingControlPort;
 import com.quantor.domain.market.Candle;
 import com.quantor.domain.order.TradeAction;
 import com.quantor.domain.portfolio.Fill;
@@ -14,6 +17,7 @@ import com.quantor.domain.portfolio.PortfolioPosition;
 import com.quantor.domain.portfolio.PortfolioSnapshot;
 import com.quantor.domain.risk.RiskManager;
 import com.quantor.domain.strategy.Strategy;
+import com.quantor.domain.trading.UserId;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -21,7 +25,15 @@ import java.util.List;
 
 /**
  * Unified use-case pipeline: MarketData -> Strategy -> Risk -> Execution -> Portfolio -> Notify.
- * Minimal MVP with long-only market orders.
+ *
+ * P0:
+ * - PayGate: subscription check on every tick (core-level).
+ * - Kill-switch: tradingControl check on every tick.
+ * - Anti double-order (MVP): cooldown guard for BUY/SELL.
+ * - STOP signal: TradingStoppedException handled separately (no silent swallow).
+ *
+ * IMPORTANT (P0):
+ * - NO dev bypass in core.
  */
 public class TradingPipeline {
 
@@ -34,6 +46,11 @@ public class TradingPipeline {
     private final NotifierPort notifier;
     private final TradeJournalPort journal;
 
+    private final SubscriptionPort subscription;
+    private final TradingControlPort control;
+    private final OrderCooldownGuard cooldown;
+    private final String userId;
+
     public TradingPipeline(TradingMode mode,
                            ExchangePort exchange,
                            PortfolioPort portfolio,
@@ -41,7 +58,11 @@ public class TradingPipeline {
                            Strategy strategy,
                            RiskManager riskManager,
                            TradeJournalPort journal,
-                           NotifierPort notifier) {
+                           NotifierPort notifier,
+                           SubscriptionPort subscription,
+                           TradingControlPort control,
+                           OrderCooldownGuard cooldown,
+                           String userId) {
         this.mode = mode;
         this.exchange = exchange;
         this.portfolio = portfolio;
@@ -50,10 +71,28 @@ public class TradingPipeline {
         this.riskManager = riskManager;
         this.journal = journal;
         this.notifier = notifier;
+
+        this.subscription = subscription;
+        this.control = control;
+        this.cooldown = cooldown;
+        this.userId = userId;
     }
 
     public PipelineResult tick(MarketSymbol symbol, Timeframe timeframe, int lookback) {
         try {
+            // ===== P0: kill-switch + pay-gate in CORE (every tick) =====
+            if (control != null && !control.isTradingEnabled()) {
+                throw new TradingStoppedException(
+                        control.disabledReason() == null ? "Trading disabled" : control.disabledReason()
+                );
+            }
+
+            if (subscription != null) {
+                if (userId == null || userId.isBlank() || !subscription.canTrade(new UserId(userId))) {
+                    throw new TradingStoppedException("Subscription inactive");
+                }
+            }
+
             List<Candle> candles = exchange.getCandles(symbol, timeframe, lookback);
             if (candles == null || candles.size() < 5) {
                 return new PipelineResult(symbol, TradeAction.HOLD, false, "Not enough candles");
@@ -63,10 +102,8 @@ public class TradingPipeline {
             PortfolioSnapshot snap = portfolio.getSnapshot();
             double equity = snap.getEquityQuote().doubleValue();
 
-            // (Optional) PipelineContext can be used by advanced strategies; not needed for current MVP.
             TradeAction action = strategy.decide(candles);
 
-            // Simple position state from portfolio
             PortfolioPosition pos = portfolio.getPosition(symbol.asBaseQuote());
             double posQty = (pos == null) ? 0.0 : pos.getQtyBase().doubleValue();
 
@@ -74,12 +111,14 @@ public class TradingPipeline {
             String msg = "HOLD";
 
             if (action == TradeAction.BUY && posQty <= 0.0) {
+                if (cooldown != null && !cooldown.allow(symbol.asBaseQuote() + ":BUY")) {
+                    return new PipelineResult(symbol, TradeAction.HOLD, false, "Cooldown: BUY suppressed");
+                }
+
                 double stopPrice = riskManager.calcStopPrice(lastPrice);
                 double qty = riskManager.calcPositionSize(lastPrice, stopPrice, equity);
                 if (qty > 0) {
                     exchange.marketBuy(symbol, qty);
-                    // PAPER/BACKTEST adapters should have already updated portfolio inside orderExec,
-                    // but we still emit a fill for completeness if portfolio is applyFill-enabled.
                     try {
                         portfolio.applyFill(new Fill(symbol.asBaseQuote(), Fill.Side.BUY,
                                 BigDecimal.valueOf(qty),
@@ -87,6 +126,7 @@ public class TradingPipeline {
                                 BigDecimal.ZERO,
                                 Instant.now()));
                     } catch (Exception ignore) {}
+
                     executed = true;
                     msg = "BUY qty=" + qty;
                     notifier.send("🟢 " + mode + " " + symbol + " " + msg);
@@ -94,7 +134,12 @@ public class TradingPipeline {
                         journal.logTrade(String.valueOf(mode), symbol.asBaseQuote(), "BUY", lastPrice, qty, equity, msg);
                     } catch (Exception ignore) {}
                 }
+
             } else if (action == TradeAction.SELL && posQty > 0.0) {
+                if (cooldown != null && !cooldown.allow(symbol.asBaseQuote() + ":SELL")) {
+                    return new PipelineResult(symbol, TradeAction.HOLD, false, "Cooldown: SELL suppressed");
+                }
+
                 exchange.marketSell(symbol, posQty);
                 try {
                     portfolio.applyFill(new Fill(symbol.asBaseQuote(), Fill.Side.SELL,
@@ -103,17 +148,21 @@ public class TradingPipeline {
                             BigDecimal.ZERO,
                             Instant.now()));
                 } catch (Exception ignore) {}
+
                 executed = true;
                 msg = "SELL qty=" + posQty;
                 notifier.send("🔴 " + mode + " " + symbol + " " + msg);
                 try {
                     journal.logTrade(String.valueOf(mode), symbol.asBaseQuote(), "SELL", lastPrice, posQty, equity, msg);
                 } catch (Exception ignore) {}
-            } else {
-                // no trade
             }
 
             return new PipelineResult(symbol, action, executed, msg);
+
+        } catch (TradingStoppedException e) {
+            try { notifier.send("🛑 STOP " + symbol + ": " + e.getMessage()); } catch (Exception ignore) {}
+            return new PipelineResult(symbol, TradeAction.HOLD, false, "STOP: " + e.getMessage());
+
         } catch (Exception e) {
             try { notifier.send("❌ PIPELINE " + symbol + ": " + e.getMessage()); } catch (Exception ignore) {}
             return new PipelineResult(symbol, TradeAction.HOLD, false, "error: " + e.getMessage());

@@ -3,91 +3,89 @@ package com.quantor.db;
 import com.quantor.application.ports.SubscriptionPort;
 import com.quantor.domain.trading.UserId;
 
+import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
- * DB-backed SubscriptionPort (P0).
+ * Postgres-backed SubscriptionPort (table: subscriptions).
  *
- * Source of truth: user_subscriptions table updated by Lemon Squeezy webhooks.
+ * Core rule: FAIL-CLOSED.
+ * - Any error or missing data => Optional.empty()
+ * - SubscriptionPort.status() default => BLOCKED
+ *
+ * P0:
+ * - NO dev bypass here.
  */
 public final class SubscriptionSqlPort implements SubscriptionPort {
 
+    private final DataSource dataSource;
+
+    public SubscriptionSqlPort(DataSource dataSource) {
+        this.dataSource = require(dataSource, "dataSource");
+    }
+
     @Override
-    public Status status(UserId userId) {
-        if (userId == null) return Status.FREE;
+    public Optional<SubscriptionPort.SubscriptionSnapshot> findLatest(UserId userId) {
+        if (userId == null || userId.value() == null || userId.value().isBlank()) {
+            return Optional.empty();
+        }
 
-        Database.ensureDataDir();
-        Database.initSchema();
+        UUID uid = parseUuidOrNull(userId.value());
+        if (uid == null) return Optional.empty();
 
-        String sql = "SELECT status FROM user_subscriptions WHERE user_id = ?";
-        try (Connection c = Database.getConnection();
+        final String sql = """
+                SELECT user_id, plan, status, frozen, current_period_ends_at
+                FROM subscriptions
+                WHERE user_id = ?
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """;
+
+        try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, userId.value());
+
+            ps.setObject(1, uid);
+
             try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) return Status.FREE;
-                String s = rs.getString("status");
-                return mapStatus(s);
+                if (!rs.next()) return Optional.empty();
+
+                UUID u = (UUID) rs.getObject("user_id");
+                String plan = rs.getString("plan");
+                String status = rs.getString("status");
+                boolean frozen = rs.getBoolean("frozen");
+
+                OffsetDateTime endsAt = null;
+                Object ts = rs.getObject("current_period_ends_at");
+                if (ts instanceof OffsetDateTime odt) {
+                    endsAt = odt;
+                } else if (ts instanceof java.sql.Timestamp tss) {
+                    endsAt = tss.toInstant().atOffset(ZoneOffset.UTC);
+                }
+
+                return Optional.of(new SubscriptionPort.SubscriptionSnapshot(u, plan, status, frozen, endsAt));
             }
+
         } catch (Exception e) {
-            throw new RuntimeException("Subscription status lookup failed for user: " + userId.value(), e);
+            return Optional.empty(); // FAIL-CLOSED
         }
     }
 
-    public void upsert(String userId,
-                       String subscriptionId,
-                       Integer variantId,
-                       String lemonStatus,
-                       String renewsAt,
-                       String endsAt) {
-        Database.ensureDataDir();
-        Database.initSchema();
-
-        String sql = """
-            INSERT INTO user_subscriptions(user_id, subscription_id, variant_id, status, renews_at, ends_at, updated_at)
-            VALUES(?,?,?,?,?,?,?)
-            ON CONFLICT(user_id) DO UPDATE SET
-              subscription_id=excluded.subscription_id,
-              variant_id=excluded.variant_id,
-              status=excluded.status,
-              renews_at=excluded.renews_at,
-              ends_at=excluded.ends_at,
-              updated_at=excluded.updated_at
-            """;
-        try (Connection c = Database.getConnection();
-             PreparedStatement ps = c.prepareStatement(sql)) {
-
-            ps.setString(1, userId);
-            ps.setString(2, subscriptionId);
-            if (variantId == null) ps.setObject(3, null);
-            else ps.setInt(3, variantId);
-            ps.setString(4, lemonStatus == null ? "unknown" : lemonStatus);
-            ps.setString(5, renewsAt);
-            ps.setString(6, endsAt);
-            ps.setString(7, Instant.now().toString());
-
-            ps.executeUpdate();
-        } catch (Exception e) {
-            throw new RuntimeException("Subscription upsert failed for user: " + userId, e);
+    private static UUID parseUuidOrNull(String raw) {
+        try {
+            return UUID.fromString(raw.trim());
+        } catch (Exception ignore) {
+            return null;
         }
     }
 
-    private static Status mapStatus(String lemonStatus) {
-        if (lemonStatus == null) return Status.FREE;
-        String s = lemonStatus.trim().toLowerCase();
-
-        // Lemon Squeezy docs: allow access in these states; expired = no access.
-        // We'll treat "unpaid" and "expired" as BLOCKED.
-        return switch (s) {
-            case "active" -> Status.PAID;
-            case "on_trial" -> Status.GRACE;
-            case "paused" -> Status.GRACE;
-            case "past_due" -> Status.GRACE;
-            case "cancelled" -> Status.GRACE; // valid until ends_at
-            case "unpaid", "expired" -> Status.BLOCKED;
-            default -> Status.FREE;
-        };
+    private static <T> T require(T v, String name) {
+        if (v == null) throw new IllegalArgumentException(name + " is null");
+        return v;
     }
 }
