@@ -60,3 +60,8 @@ quantor-cli/src/main/resources/config.properties
 tools/*.bak.*
 # local override only
 docker-compose.override.yml
+
+# local runtime
+.dev/
+*.bak.*
+*.pid
