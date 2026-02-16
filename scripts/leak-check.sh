@@ -1,4 +1,3 @@
-cat > scripts/leak-check.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -6,6 +5,8 @@ set -euo pipefail
 # Allow docs/examples with placeholders like "change_me" or empty values.
 
 bad=0
+# paths to ignore (examples/docs)
+GREP_EXCLUDES=":(exclude)README.md :(exclude)RUN_LOCAL.md :(exclude)**/*.example :(exclude)config/README.txt :(exclude)deploy/**"
 
 echo "== Leak check (likely real secrets) =="
 
@@ -45,6 +46,3 @@ if [ "$bad" -ne 0 ]; then
 fi
 
 echo "OK"
-EOF
-
-chmod +x scripts/leak-check.sh
