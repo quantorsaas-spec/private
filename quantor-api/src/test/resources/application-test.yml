@@ -1,30 +1,34 @@
 spring:
+  application:
+    name: quantor-api
+
   datasource:
-    url: jdbc:h2:mem:quantor_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
-    driverClassName: org.h2.Driver
-    username: sa
-    password:
+    url: ${QUANTOR_DB_URL:jdbc:h2:mem:quantor_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1}
+    username: ${QUANTOR_DB_USER:sa}
+    password: ${QUANTOR_DB_PASSWORD:}
+    driver-class-name: org.h2.Driver
+
   jpa:
     hibernate:
       ddl-auto: create-drop
     properties:
-      # H2 (and many SQL dialects) treat INTERVAL as a reserved keyword.
-      # The project currently has a column named "interval" (see bot_instances),
-      # so we force Hibernate to quote identifiers in tests to catch schema issues
-      # without renaming production columns yet.
       hibernate:
         globally_quoted_identifiers: true
         auto_quote_keyword: true
+        dialect: org.hibernate.dialect.PostgreSQL10Dialect
+
   flyway:
     enabled: false
-
-quantor:
-  # Tests don't validate secrets; keep them explicit to avoid accidental prod assumptions.
-  auth:
-    jwtSecret: test_jwt_secret
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics,prometheus
+
+quantor:
+  telegram:
+    enabled: false
+  
+  auth:
+    jwtSecret: ${QUANTOR_JWT_SECRET:test_jwt_secret_dev}
