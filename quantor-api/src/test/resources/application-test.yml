@@ -3,9 +3,9 @@ spring:
     name: quantor-api
 
   datasource:
-    url: ${QUANTOR_DB_URL:jdbc:h2:mem:quantor_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1}
-    username: ${QUANTOR_DB_USER:sa}
-    password: ${QUANTOR_DB_PASSWORD:}
+    url: jdbc:h2:mem:quantor_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
     driver-class-name: org.h2.Driver
 
   jpa:
@@ -31,4 +31,4 @@ quantor:
     enabled: false
   
   auth:
-    jwtSecret: ${QUANTOR_JWT_SECRET:test_jwt_secret_dev}
+    jwtSecret: test_jwt_secret_dev
