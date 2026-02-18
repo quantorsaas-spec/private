@@ -41,11 +41,11 @@ management:
 
 quantor:
   telegram:
-    enabled: true               # главный рубильник для TelegramBotProperties
+    enabled: true
     ops:
-      enabled: false            # OpsBot выключен (иначе риск 409)
+      enabled: false
     command:
-      enabled: true             # CommandBot включен (твой TelegramCommandBotStartup)
+      enabled: true
 
     botToken: ${QUANTOR_TELEGRAM_BOT_TOKEN:}
     allowedUserIds: ${QUANTOR_TELEGRAM_ALLOWED_USER_IDS:}
